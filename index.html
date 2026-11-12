@@ -963,7 +963,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <div class="panel">
      <h3>Diagnostic Bluetooth</h3>
      <div class="kv" id="diagKv"><b>Vélo</b><span>non connecté</span></div>
-     <div class="row"><button class="sbtn" onclick="connectBike(true)">🔍 Scanner tous les appareils</button><button class="sbtn" onclick="copyLog()">📋 Copier le journal</button></div>
+     <div class="row"><button class="sbtn" onclick="connectBike(false)">🔍 Chercher seulement les vélos (FTMS)</button><button class="sbtn" onclick="copyLog()">📋 Copier le journal</button></div>
      <div class="log" id="log"></div>
     </div>
    </div>
@@ -1001,6 +1001,20 @@ svg.leaflet-image-layer.leaflet-interactive path {
  </div>
 </div>
 <svg width="0" height="0" style="position:absolute"><defs><linearGradient id="mpg" x1="0" x2="1"><stop offset="0" stop-color="#ffd60a"/><stop offset="1" stop-color="#ff5f0a"/></linearGradient></defs></svg>
+<div class="modal" id="bleHelp" onclick="if(event.target===this)this.style.display='none'">
+ <div class="mbox panel" style="width:min(620px,100%)">
+  <h2 style="font-size:22px">Le vélo ne s’est pas connecté</h2>
+  <div class="bh-err" style="font-family:ui-monospace,Menlo,monospace;font-size:13px;background:var(--panel2);padding:10px;border-radius:10px;user-select:text;-webkit-user-select:text"></div>
+  <ol style="padding-left:20px;line-height:1.6">
+   <li><b>Ferme Kinomap</b> (et toute autre appli vélo) sur l’iPad <b>et sur les iPhone</b> : le vélo n’accepte qu’<b>une seule connexion à la fois</b>.</li>
+   <li>Coupe puis rallume le Bluetooth de l’iPad, et pédale quelques secondes pour réveiller la console.</li>
+   <li>Vérifie <b>Réglages iPad › Bluefy › Bluetooth</b> : activé.</li>
+   <li>Touche « Vélo », puis choisis ton vélo dans la liste (son nom ressemble souvent à <i>CHAOKE</i>, <i>FS-…</i>, <i>FTMS</i>, <i>Bike</i>, <i>YS…</i>).</li>
+   <li>Toujours bloqué ? Va dans <b>Réglages › Diagnostic</b>, touche « 📋 Copier le journal » et envoie-le-moi.</li>
+  </ol>
+  <div class="row"><button class="sbtn pri" onclick="$('bleHelp').style.display='none';connectBike()">🔄 Réessayer</button><button class="sbtn" onclick="$('bleHelp').style.display='none'">Fermer</button></div>
+ </div>
+</div>
 <div class="toast" id="toast"></div>
 <script>
 'use strict';
@@ -1078,33 +1092,51 @@ function onBike(r,src){
  if(r.hr&&!hrDev)live.hr=r.hr;
  for(const k in r)if(!seenIBD[k]){seenIBD[k]=1;log('✓ Le vélo transmet : '+({spd:'vitesse',cad:'cadence',dist:'distance totale',res:'NIVEAU DE RÉSISTANCE (roulette)',power:'puissance',kcal:'calories',hr:'fréquence cardiaque'}[k]||k)+' ('+src+')');diag()}
 }
+const errTxt=e=>{if(!e)return'inconnue';if(typeof e==='string')return e;return [e.name,e.message].filter(x=>x&&x!=='undefined').join(' : ')||String(e)};
+let step='';
 async function connectBike(all){
  if(!needBle())return;
+ const firstTime=!ls.get('bikeOk',false);
  try{
-  chip('cBike','wait','Recherche…');
-  const opts=all?{acceptAllDevices:true,optionalServices:OPT}:{filters:[{services:[FTMS]},{services:[CPS]},{services:[CSC]}],optionalServices:OPT};
+  chip('cBike','wait','Recherche…');step='recherche de l’appareil';
+  // On liste tous les appareils Bluetooth : certains vélos n'annoncent pas leur type, ils n'apparaîtraient pas sinon.
+  const opts=all===false?{filters:[{services:[FTMS]},{services:[CPS]},{services:[CSC]}],optionalServices:OPT}:{acceptAllDevices:true,optionalServices:OPT};
   bikeDev=await navigator.bluetooth.requestDevice(opts);
-  log('Appareil choisi : '+(bikeDev.name||'(sans nom)'));
+  log('Appareil choisi : '+(bikeDev.name||'(sans nom)')+' · id '+bikeDev.id);
   bikeDev.addEventListener('gattserverdisconnected',()=>{chip('cBike','','Vélo déconnecté');log('⚠ Vélo déconnecté');toast('Vélo déconnecté — touche « Vélo » pour reconnecter',4000)});
-  const srv=await bikeDev.gatt.connect();
-  const svcs=await srv.getPrimaryServices();let got=false;
+  step='connexion au vélo';chip('cBike','wait','Connexion…');
+  const srv=await bikeDev.gatt.connect();log('Connexion GATT ✓');
+  step='lecture des services';
+  let svcs=[];try{svcs=await srv.getPrimaryServices()}catch(e){log('getPrimaryServices() : '+errTxt(e)+' → essai service par service')}
+  if(!svcs.length){for(const u of OPT){try{svcs.push(await srv.getPrimaryService(u))}catch(e){}}}
+  log(svcs.length+' service(s) trouvé(s)');
+  let got=false;
   for(const s of svcs){
    log('Service '+s.uuid);
-   let chs=[];try{chs=await s.getCharacteristics()}catch(e){}
+   let chs=[];try{chs=await s.getCharacteristics()}catch(e){log('   (caractéristiques illisibles : '+errTxt(e)+')')}
    for(const c of chs){const p=c.properties;log('   └ '+c.uuid+' ['+['read','write','notify','indicate'].filter(k=>p[k]).join(',')+']');
     const u=c.uuid.slice(4,8);
     if(p.notify||p.indicate){
-     if(u==='2ad2'){await sub(c,dv=>{logRaw('IBD',dv);onBike(parseIBD(dv),'FTMS')});got=true}
-     else if(u==='2a63'){await sub(c,dv=>{logRaw('CPM',dv);onBike(parseCPM(dv),'Puissance')});got=true}
-     else if(u==='2a5b'){await sub(c,dv=>{logRaw('CSC',dv);onBike(parseCSC(dv),'CSC')});got=true}
-     else if(all||!['2a37'].includes(u)){try{await sub(c,dv=>logRaw(u,dv))}catch(e){}}
+     try{
+      if(u==='2ad2'){await sub(c,dv=>{logRaw('IBD',dv);onBike(parseIBD(dv),'FTMS')});got=true}
+      else if(u==='2a63'){await sub(c,dv=>{logRaw('CPM',dv);onBike(parseCPM(dv),'Puissance')});got=true}
+      else if(u==='2a5b'){await sub(c,dv=>{logRaw('CSC',dv);onBike(parseCSC(dv),'CSC')});got=true}
+      else if(u!=='2a37'){await sub(c,dv=>logRaw(u,dv))}
+     }catch(e){log('   abonnement '+u+' impossible : '+errTxt(e))}
     }}
   }
-  chip('cBike','ok',bikeDev.name||'Vélo');
+  chip('cBike','ok',bikeDev.name||'Vélo');ls.set('bikeOk',true);
   log(got?'Connecté ✓ — pédale pour voir les données.':'Connecté, mais aucun service vélo standard trouvé. Envoie-moi le journal.');
-  toast(got?'Vélo connecté ✓':'Connecté — voir Réglages › Diagnostic');diag();
- }catch(e){chip('cBike','',bikeDev&&bikeDev.gatt&&bikeDev.gatt.connected?bikeDev.name:'Vélo');if(e.name!=='NotFoundError'){log('Erreur : '+e.message);toast('Erreur : '+e.message,4000)}}
+  toast(got?'Vélo connecté ✓ — pédale !':'Connecté — voir Réglages › Diagnostic',4000);diag();
+ }catch(e){
+  chip('cBike','',bikeDev&&bikeDev.gatt&&bikeDev.gatt.connected?(bikeDev.name||'Vélo'):'Vélo');
+  log('Erreur pendant « '+step+' » : '+errTxt(e));
+  if(e&&e.name==='NotFoundError'&&/cancel/i.test(e.message||''))return; // simple annulation
+  showBleHelp(step,errTxt(e));
+ }
 }
+function showBleHelp(st,msg){
+ const h=$('bleHelp');h.querySelector('.bh-err').textContent='Étape : '+st+' — '+msg;h.style.display='flex'}
 async function sub(c,fn){c.addEventListener('characteristicvaluechanged',ev=>fn(ev.target.value));await c.startNotifications()}
 let rawCount=0;function logRaw(tag,dv){if(rawCount++<60||rawCount%50===0)log(tag+' : '+hex(dv))}
 async function connectHr(){
@@ -1115,7 +1147,7 @@ async function connectHr(){
   const s=await(await hrDev.gatt.connect()).getPrimaryService(HRS);const c=await s.getCharacteristic(HRM);
   await sub(c,dv=>{live.hr=parseHR(dv);live.lastHr=Date.now()});
   chip('cHr','ok',hrDev.name||'Cardio');log('Cardio connecté : '+(hrDev.name||''));toast('Cardio connecté ✓');
- }catch(e){chip('cHr','',hrDev?'Cardio':'Cardio');hrDev=null;if(e.name!=='NotFoundError')toast('Erreur cardio : '+e.message,4000)}
+ }catch(e){chip('cHr','',hrDev?'Cardio':'Cardio');hrDev=null;log('Erreur cardio : '+errTxt(e));if(!(e&&e.name==='NotFoundError'&&/cancel/i.test(e.message||'')))toast('Cardio : '+errTxt(e),5000)}
 }
 function diag(){const k=$('diagKv');k.innerHTML='<b>Vélo</b><span>'+(bikeDev?(bikeDev.name||'sans nom'):'non connecté')+'</span><b>Données reçues</b><span>'+(Object.keys(seenIBD).join(', ')||'—')+'</span><b>Roulette transmise ?</b><span>'+(seenIBD.res?'✅ oui':(Object.keys(seenIBD).length?'❌ non (saisie manuelle)':'—'))+'</span>'}
 
