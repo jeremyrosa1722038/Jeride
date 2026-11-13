@@ -946,7 +946,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <section class="view" id="v-cfg">
    <div class="cfg">
     <div class="panel">
-     <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border-radius:12px;padding:10px 14px"><b>Version</b><span style="font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-size:18px" id="appVer">v4.9 — 13/11/2026 à 14h14</span></div>
+     <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border-radius:12px;padding:10px 14px"><b>Version</b><span style="font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-size:18px" id="appVer">v5.0 — 13/11/2026 à 15h09</span></div>
      <h3>Affichage</h3>
      <div class="row"><button class="sbtn" onclick="setTheme('dark')">🌙 Fond noir</button><button class="sbtn" onclick="setTheme('light')">☀️ Fond blanc</button></div>
      <h3 style="margin-top:8px">Profil</h3>
@@ -1052,7 +1052,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 <div class="toast" id="toast"></div>
 <script>
 'use strict';
-const APPV='v4.9 — 13/11/2026 à 14h14';
+const APPV='v5.0 — 13/11/2026 à 15h09';
 try{document.getElementById('appVer').textContent=APPV}catch(e){}
 /* ---------- utilitaires ---------- */
 const $=id=>document.getElementById(id);
@@ -1090,8 +1090,14 @@ function updAge(){age=+$('age').value||40;ls.set('age',age);$('fcmax').textConte
 function hrZone(hr){if(!hr)return'';const p=hr/fcMax();return p<.6?'Zone 1':p<.7?'Zone 2':p<.8?'Zone 3':p<.9?'Zone 4':'Zone 5'}
 
 /* ---------- Bluetooth : constantes ---------- */
-const FTMS=0x1826,IBD=0x2ad2,CPS=0x1818,CPM=0x2a63,CSC=0x1816,CSCM=0x2a5b,HRS=0x180d,HRM=0x2a37,BAT=0x180f,DIS=0x180a;
-const OPT=[FTMS,CPS,CSC,HRS,BAT,DIS,0x1814,'0000fff0-0000-1000-8000-00805f9b34fb','6e400001-b5a3-f393-e0a9-e50e24dcca9e'];
+// UUID au format complet : Bluefy (iPad) refuse les numéros courts type 0x1826 (erreur « 2 »).
+const U16=n=>'0000'+n.toString(16).padStart(4,'0')+'-0000-1000-8000-00805f9b34fb';
+const FTMS=U16(0x1826),IBD=U16(0x2ad2),CPS=U16(0x1818),CPM=U16(0x2a63),CSC=U16(0x1816),CSCM=U16(0x2a5b),HRS=U16(0x180d),HRM=U16(0x2a37),BAT=U16(0x180f),DIS=U16(0x180a);
+const OPT_STD=[FTMS,CPS,CSC,HRS,BAT,DIS,U16(0x1814)];
+const OPT=OPT_STD.concat([U16(0xfff0),'6e400001-b5a3-f393-e0a9-e50e24dcca9e']);
+// Niveau de compatibilité : si Bluefy refuse encore la liste de services, on la réduit au prochain appui.
+const optFor=()=>{const l=ls.get('bleCompat',0);return l<=0?OPT:l===1?OPT_STD:[FTMS,CPS,CSC]};
+const withTimeout=(p,ms,what)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error(what+' : pas de réponse après '+Math.round(ms/1000)+' s (vélo occupé par Kinomap ou mauvais appareil ?)')),ms))]);
 let bikeDev=null,hrDev=null;
 function chip(id,state,label){const c=$(id);c.querySelector('.dot').className='dot'+(state==='ok'?' ok':state==='wait'?' wait':'');c.querySelector('span:last-child').textContent=label}
 function needBle(){if(navigator.bluetooth)return true;alert('Bluetooth indisponible dans ce navigateur.\n\nSur iPad, Safari et Chrome ne savent PAS accéder au Bluetooth (limitation d’Apple).\n\n➜ Installe l’app gratuite « Bluefy – Web BLE Browser » (App Store) et ouvre cette page dedans.');return false}
@@ -1140,26 +1146,30 @@ async function connectBike(all){
   chip('cBike','wait','Recherche…');step='recherche de l’appareil';
   // On liste tous les appareils Bluetooth : certains vélos n'annoncent pas leur type, ils n'apparaîtraient pas sinon.
   const NAMES=['SmartBike','Smart','FS-','CHAOKE','Chaoke','508','617','Bike','BIKE','FTMS','YS','MRK','QB','KS','JT','Jintuo','iConsole','Console'];
-  const M=all||'tout';
-  const opts=M==='ftms'||all===false?{filters:[{services:[FTMS]},{services:[CPS]},{services:[CSC]}],optionalServices:OPT}
-   :M==='nom'?{filters:NAMES.map(n=>({namePrefix:n})),optionalServices:OPT}
+  const M=all||'tout',O=optFor();
+  const opts=M==='ftms'||all===false?{filters:[{services:[FTMS]},{services:[CPS]},{services:[CSC]}],optionalServices:O}
+   :M==='nom'?{filters:NAMES.map(n=>({namePrefix:n})),optionalServices:O}
    :M==='simple'?{acceptAllDevices:true}
-   :{acceptAllDevices:true,optionalServices:OPT};
-  log('Méthode de recherche : '+M+' · Bluefy/Bluetooth : '+(navigator.bluetooth?'présent':'absent'));
+   :{acceptAllDevices:true,optionalServices:O};
+  log('Méthode de recherche : '+M+' · compat '+ls.get('bleCompat',0)+' · Bluefy/Bluetooth : '+(navigator.bluetooth?'présent':'absent'));
   // IMPORTANT : requestDevice() doit être appelé AVANT tout « await », sinon iOS/Bluefy
   // considère que ce n'est plus un appui de l'utilisateur et la liste ne s'ouvre jamais.
-  const pick=navigator.bluetooth.requestDevice(opts);
+  const t0=Date.now(),pick=navigator.bluetooth.requestDevice(opts);
   try{if(navigator.bluetooth.getAvailability)navigator.bluetooth.getAvailability().then(a=>log('Bluetooth disponible : '+a)).catch(()=>{})}catch(e){}
-  bikeDev=await pick;
+  try{bikeDev=await pick}catch(e){
+   // Refus immédiat (< 0,8 s, aucune liste affichée) = Bluefy n'aime pas les options → on simplifie pour le prochain appui
+   if(Date.now()-t0<800&&M!=='simple'&&ls.get('bleCompat',0)<2){ls.set('bleCompat',ls.get('bleCompat',0)+1);log('Refus immédiat ('+errTxt(e)+') → mode compatibilité '+ls.get('bleCompat',0));
+    chip('cBike','','Vélo');if($('wiz').style.display==='flex')$('wizRes').innerHTML='⚙️ Réglage de compatibilité appliqué — <b>touche à nouveau la même méthode</b>.';else toast('Réglage de compatibilité appliqué — touche à nouveau « Vélo »',4500);return}
+   throw e}
   log('Appareil choisi : '+(bikeDev.name||'(sans nom)')+' · id '+bikeDev.id);
   const onDisc=()=>{chip('cBike','','Vélo déconnecté');log('⚠ Vélo déconnecté');toast('Vélo déconnecté — touche « Vélo » pour reconnecter',4000)};
   try{bikeDev.addEventListener('gattserverdisconnected',onDisc)}catch(e){try{bikeDev.ongattserverdisconnected=onDisc}catch(e2){}}
   if(!bikeDev.gatt)throw new Error('cet appareil ne propose pas de connexion GATT');
   step='connexion au vélo';chip('cBike','wait','Connexion…');
-  const srv=await bikeDev.gatt.connect();log('Connexion GATT ✓');
+  const srv=await withTimeout(bikeDev.gatt.connect(),20000,'Connexion au vélo');log('Connexion GATT ✓');
   step='lecture des services';
   let svcs=[];try{svcs=await srv.getPrimaryServices()}catch(e){log('getPrimaryServices() : '+errTxt(e)+' → essai service par service')}
-  if(!svcs.length){for(const u of OPT){try{svcs.push(await srv.getPrimaryService(u))}catch(e){}}}
+  if(!svcs.length){for(const u of optFor()){try{svcs.push(await srv.getPrimaryService(u))}catch(e){}}}
   log(svcs.length+' service(s) trouvé(s)');
   let got=false;
   for(const s of svcs){
