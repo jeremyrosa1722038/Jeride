@@ -946,7 +946,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <section class="view" id="v-cfg">
    <div class="cfg">
     <div class="panel">
-     <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border-radius:12px;padding:10px 14px"><b>Version</b><span style="font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-size:18px" id="appVer">v5.0 — 13/11/2026 à 15h09</span></div>
+     <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border-radius:12px;padding:10px 14px"><b>Version</b><span style="font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-size:18px" id="appVer">v5.1 — 13/11/2026 à 15h15</span></div>
      <h3>Affichage</h3>
      <div class="row"><button class="sbtn" onclick="setTheme('dark')">🌙 Fond noir</button><button class="sbtn" onclick="setTheme('light')">☀️ Fond blanc</button></div>
      <h3 style="margin-top:8px">Profil</h3>
@@ -1052,7 +1052,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 <div class="toast" id="toast"></div>
 <script>
 'use strict';
-const APPV='v5.0 — 13/11/2026 à 15h09';
+const APPV='v5.1 — 13/11/2026 à 15h15';
 try{document.getElementById('appVer').textContent=APPV}catch(e){}
 /* ---------- utilitaires ---------- */
 const $=id=>document.getElementById(id);
@@ -1098,7 +1098,7 @@ const OPT=OPT_STD.concat([U16(0xfff0),'6e400001-b5a3-f393-e0a9-e50e24dcca9e']);
 // Niveau de compatibilité : si Bluefy refuse encore la liste de services, on la réduit au prochain appui.
 const optFor=()=>{const l=ls.get('bleCompat',0);return l<=0?OPT:l===1?OPT_STD:[FTMS,CPS,CSC]};
 const withTimeout=(p,ms,what)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error(what+' : pas de réponse après '+Math.round(ms/1000)+' s (vélo occupé par Kinomap ou mauvais appareil ?)')),ms))]);
-let bikeDev=null,hrDev=null;
+let bikeDev=null,hrDev=null,bikeCp=null;
 function chip(id,state,label){const c=$(id);c.querySelector('.dot').className='dot'+(state==='ok'?' ok':state==='wait'?' wait':'');c.querySelector('span:last-child').textContent=label}
 function needBle(){if(navigator.bluetooth)return true;alert('Bluetooth indisponible dans ce navigateur.\n\nSur iPad, Safari et Chrome ne savent PAS accéder au Bluetooth (limitation d’Apple).\n\n➜ Installe l’app gratuite « Bluefy – Web BLE Browser » (App Store) et ouvre cette page dedans.');return false}
 
@@ -1171,12 +1171,13 @@ async function connectBike(all){
   let svcs=[];try{svcs=await srv.getPrimaryServices()}catch(e){log('getPrimaryServices() : '+errTxt(e)+' → essai service par service')}
   if(!svcs.length){for(const u of optFor()){try{svcs.push(await srv.getPrimaryService(u))}catch(e){}}}
   log(svcs.length+' service(s) trouvé(s)');
-  let got=false;
+  let got=false,cp=null;
   for(const s of svcs){
    log('Service '+s.uuid);
    let chs=[];try{chs=await s.getCharacteristics()}catch(e){log('   (caractéristiques illisibles : '+errTxt(e)+')')}
    for(const c of chs){const p=c.properties;log('   └ '+c.uuid+' ['+['read','write','notify','indicate'].filter(k=>p[k]).join(',')+']');
     const u=c.uuid.slice(4,8);
+    if(u==='2ad9')cp=c; // FTMS Control Point
     if(p.notify||p.indicate){
      try{
       if(u==='2ad2'){await sub(c,dv=>{logRaw('IBD',dv);onBike(parseIBD(dv),'FTMS')});got=true}
@@ -1186,6 +1187,17 @@ async function connectBike(all){
      }catch(e){log('   abonnement '+u+' impossible : '+errTxt(e))}
     }}
   }
+  // Beaucoup de vélos FTMS (SmartBike, FS-, YS…) n'envoient leurs données qu'après
+  // « Prendre le contrôle » (0x00) puis « Démarrer » (0x07), comme le fait Kinomap.
+  if(cp){step='démarrage du vélo (FTMS)';
+   const w=a=>{const b=new Uint8Array(a);return cp.writeValueWithResponse?cp.writeValueWithResponse(b):cp.writeValue(b)};
+   try{await withTimeout(w([0x00]),5000,'Prise de contrôle');log('FTMS : prise de contrôle ✓')}catch(e){log('FTMS : prise de contrôle refusée ('+errTxt(e)+')')}
+   try{await withTimeout(w([0x07]),5000,'Démarrage');log('FTMS : démarrage ✓')}catch(e){log('FTMS : démarrage refusé ('+errTxt(e)+')')}
+  }else log('FTMS : pas de point de contrôle (2ad9) sur ce vélo');
+  bikeCp=cp;
+  setTimeout(()=>{if(bikeDev&&bikeDev.gatt&&bikeDev.gatt.connected&&!Object.keys(seenIBD).length){
+   log('⚠ Aucune donnée reçue après 10 s. Pédale bien. Si rien : Réglages › Diagnostic › Copier le journal et envoie-le.');
+   toast('Vélo connecté mais aucune donnée — pédale ; sinon envoie le journal',5000)}},10000);
   chip('cBike','ok',bikeDev.name||'Vélo');ls.set('bikeOk',true);
   log(got?'Connecté ✓ — pédale pour voir les données.':'Connecté, mais aucun service vélo standard trouvé. Envoie-moi le journal.');
   toast(got?'Vélo connecté ✓ — pédale !':'Connecté — voir Réglages › Diagnostic',4000);diag();
