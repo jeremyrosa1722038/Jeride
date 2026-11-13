@@ -174,6 +174,21 @@ h3{font-size:18px}
 .rviews{flex:1;display:flex;flex-direction:column;gap:8px;min-height:0}
 .rmap{flex:1.3;min-height:140px;border-radius:12px;overflow:hidden;position:relative;background:var(--panel2)}
 .rmap .leaflet-container{height:100%;background:var(--panel2);font:inherit}
+/* agrandir / réduire une vue (carte, profil, rue) */
+.mxbtn{position:absolute;right:10px;top:10px;z-index:560;width:44px;height:44px;border-radius:10px;background:var(--panel);border:1px solid var(--line);font-size:20px;font-weight:800;color:var(--txt);display:flex;align-items:center;justify-content:center}
+.mxbtn.sat{top:62px}
+.maxi{position:fixed!important;inset:max(10px,env(safe-area-inset-top)) 10px max(10px,env(safe-area-inset-bottom)) 10px;z-index:900;flex:none!important;height:auto!important;min-height:0!important;border-radius:16px;background:var(--panel2);border:2px solid var(--org);box-shadow:0 10px 40px rgba(0,0,0,.5);display:block!important}
+.maxi .mxbtn{width:auto;padding:0 14px;font-size:16px}
+.rwrap.maxi{background:var(--panel)}
+.hud{position:fixed;left:50%;bottom:max(22px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:950;display:none;gap:18px;padding:10px 18px;border-radius:14px;background:rgba(11,15,23,.82);color:#fff;font-weight:800;font-size:22px;font-variant-numeric:tabular-nums;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);white-space:nowrap}
+.hud small{font-size:12px;opacity:.7;margin-left:3px;font-weight:700}
+.hud.on{display:flex}
+/* vue de la rue (Mapillary) */
+.street{background:#000}
+.street img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:opacity .6s}
+.street img.hid{opacity:0}
+.stmsg{position:absolute;left:10px;bottom:10px;right:70px;z-index:2;color:#fff;font-size:13px;font-weight:700;text-shadow:0 1px 3px #000}
+.stcred{position:absolute;right:8px;bottom:6px;z-index:2;color:#fff;font-size:10px;opacity:.75}
 .recenter{position:absolute;right:10px;bottom:10px;z-index:500;padding:9px 12px;border-radius:10px;background:var(--panel);border:1px solid var(--line);font-weight:800;font-size:14px;color:var(--txt)}
 .pos-dot{width:22px;height:22px;border-radius:50%;background:#ff6a13;border:4px solid #fff;box-shadow:0 0 0 6px rgba(255,106,19,.35),0 2px 8px rgba(0,0,0,.4)}
 .flag{font-size:22px;line-height:22px;text-align:center}
@@ -895,10 +910,11 @@ svg.leaflet-image-layer.leaflet-interactive path {
        <div style="text-align:right;flex:none"><div class="lbl">Pente actuelle</div><div id="rSlope" style="font-size:44px;font-weight:800;color:var(--yel);line-height:1.1">--</div></div>
       </div>
       <div class="cons" id="rCons"></div>
-      <div class="vtog" id="vtog"><button data-m="both">⊞ Les deux</button><button data-m="profil">📈 Profil</button><button data-m="carte">🗺️ Carte</button></div>
+      <div class="vtog" id="vtog"><button data-m="both">⊞ Les deux</button><button data-m="profil">📈 Profil</button><button data-m="carte">🗺️ Carte</button><button data-m="rue">📷 Rue</button></div>
       <div class="rviews" id="rviews" style="margin-top:8px">
-       <div class="rwrap" id="rProf"><svg id="rSvg" viewBox="0 0 600 200" preserveAspectRatio="none"></svg><div class="rmark" id="rMark"><b>TOI</b></div></div>
-       <div class="rmap" id="rMapBox"><div id="rMap" style="height:100%"></div><button class="recenter" onclick="rideMap&&rideMap.recenter()">⌖ Recentrer</button></div>
+       <div class="rwrap" id="rProf"><svg id="rSvg" viewBox="0 0 600 200" preserveAspectRatio="none"></svg><div class="rmark" id="rMark"><b>TOI</b></div><button class="mxbtn" onclick="toggleMaxi('rProf')">⛶</button></div>
+       <div class="rmap street" id="rStreetBox" style="display:none"><img id="stImg" alt=""><img id="stImg2" alt="" class="hid"><div class="stmsg" id="stMsg">Vue de la rue</div><div class="stcred">© Mapillary</div><button class="mxbtn" onclick="toggleMaxi('rStreetBox')">⛶</button></div>
+       <div class="rmap" id="rMapBox"><div id="rMap" style="height:100%"></div><button class="recenter" onclick="rideMap&&rideMap.recenter()">⌖ Recentrer</button><button class="mxbtn" onclick="toggleMaxi('rMapBox')">⛶</button><button class="mxbtn sat" id="satBtn" onclick="rideMap&&rideMap.toggleSat()">🛰️</button></div>
       </div>
       <div class="legend" style="margin-top:6px"><span style="color:#2ee59d">0-4 %</span><span style="color:#ffc20a">4-7 %</span><span style="color:#ff6a13">7-10 %</span><span style="color:#ff4d6d">10 %+</span><span style="color:#2fa8ff">descente</span></div>
      </div>
@@ -946,7 +962,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <section class="view" id="v-cfg">
    <div class="cfg">
     <div class="panel">
-     <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border-radius:12px;padding:10px 14px"><b>Version</b><span style="font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-size:18px" id="appVer">v5.2 — 13/11/2026 à 15h20</span></div>
+     <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border-radius:12px;padding:10px 14px"><b>Version</b><span style="font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-size:18px" id="appVer">v5.4 — 13/11/2026 à 16h15</span></div>
      <h3>Affichage</h3>
      <div class="row"><button class="sbtn" onclick="setTheme('dark')">🌙 Fond noir</button><button class="sbtn" onclick="setTheme('light')">☀️ Fond blanc</button></div>
      <h3 style="margin-top:8px">Profil</h3>
@@ -966,6 +982,11 @@ svg.leaflet-image-layer.leaflet-interactive path {
      <h3 style="margin-top:8px">❤️ Fréquence cardiaque (BPM)</h3>
      <p style="color:var(--mut);font-size:13px">Ceinture ou brassard Bluetooth, ou <b>montre Garmin</b> : sur la montre, menu › Capteurs (ou FC poignet) › <b>« Diffuser la fréquence cardiaque »</b>, puis touche « BPM » en haut de l’écran.</p>
      <div class="row"><button class="sbtn pri" onclick="connectHr()">❤️ Connecter la fréquence cardiaque</button><button class="sbtn" onclick="connectHr(true)">📡 Voir tous les appareils</button><button class="sbtn" onclick="hrHelp()">❓ Aide Garmin</button></div>
+     <div class="lbl" style="margin-top:8px">Mes montres / capteurs (connexion en 1 appui)</div>
+     <div class="row" id="hrKnown" style="flex-wrap:wrap"></div>
+     <h3 style="margin-top:8px">📷 Vue de la rue (Mapillary)</h3>
+     <p style="color:var(--mut);font-size:13px">Affiche des photos réelles de la route pendant un parcours (bouton « 📷 Rue »). Gratuit : crée un compte sur <b>mapillary.com</b> › Dashboard › Developers › <b>Register application</b>, puis copie le <b>Client Token</b> (commence par <code>MLY|</code>).</p>
+     <div class="kv"><b>Client Token</b><span><input id="mlyTok" placeholder="Clé intégrée utilisée (laisser vide)" autocomplete="off" autocapitalize="off" spellcheck="false" onchange="ls.set('mlyToken',this.value.trim());Street.last=null;toast(this.value.trim()?'Clé Mapillary enregistrée ✓':'Clé Mapillary effacée')" style="width:100%;font:inherit;font-size:14px;padding:6px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--txt)"></span></div>
      <h3 style="margin-top:8px">☁️ Synchronisation cloud (iPad, iPhone…)</h3>
      <p style="color:var(--mut);font-size:13px">Tes séances et parcours sont envoyés en ligne (Supabase, gratuit) et apparaissent sur tous tes appareils. Mets <b>exactement les mêmes 3 valeurs</b> sur chaque appareil. Astuce : sur le 2ᵉ appareil, colle le texte copié avec « 📋 Copier pour un autre appareil » dans le 1er champ, les 3 champs se remplissent seuls.</p>
      <div class="kv">
@@ -1052,7 +1073,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 <div class="toast" id="toast"></div>
 <script>
 'use strict';
-const APPV='v5.2 — 13/11/2026 à 15h20';
+const APPV='v5.4 — 13/11/2026 à 16h15';
 try{document.getElementById('appVer').textContent=APPV}catch(e){}
 /* ---------- utilitaires ---------- */
 const $=id=>document.getElementById(id);
@@ -1226,17 +1247,27 @@ async function connectHr(all){
  if(!needBle())return;
  try{chip('cHr','wait','Recherche…');
   // requestDevice en tout premier (sinon iOS/Bluefy n'ouvre pas la liste)
+  // all===true : tous les appareils ; all = 'nom exact' : uniquement cette montre/ceinture mémorisée
   hrDev=await navigator.bluetooth.requestDevice(all===true?{acceptAllDevices:true,optionalServices:[HRS,BAT]}
+   :typeof all==='string'?{filters:[{name:all}],optionalServices:[HRS,BAT]}
    :{filters:[{services:[HRS]}].concat(HR_NAMES.map(n=>({namePrefix:n}))),optionalServices:[HRS,BAT]});
   hrManual=false;hrRetry=0;
   hrDev.addEventListener('gattserverdisconnected',hrLost);
   await hrLink();
-  const watch=/forerunner|f[eē]nix|venu|vivo|instinct|epix|enduro|edge|garmin/i.test(hrDev.name||'');
+  const watch=isWatch(hrDev.name);hrRemember(hrDev.name);
   log('Fréquence cardiaque connectée : '+(hrDev.name||'(sans nom)')+(watch?' (montre Garmin)':''));toast((watch?'⌚ Montre':'❤️ Capteur')+' connecté(e) ✓ — BPM reçus',3000);
  }catch(e){const d=hrDev;hrDev=null;try{d&&d.removeEventListener('gattserverdisconnected',hrLost)}catch(x){}chip('cHr','','BPM');log('Erreur fréquence cardiaque : '+errTxt(e));
   if(e&&e.name==='NotFoundError'&&/cancel/i.test(e.message||''))return;
   if(/getPrimaryService|180d|heart/i.test(errTxt(e)))alert('Cet appareil ne transmet pas de fréquence cardiaque.\n\nChoisis plutôt ta ceinture, ton brassard ou ta montre Garmin (en mode « Diffuser la fréquence cardiaque »).');else hrHelp()}
 }
+/* Montres / capteurs mémorisés : un bouton par appareil dans Réglages (ex. « ⌚ Forerunner 645 », « ⌚ Venu Sq 2 ») */
+const isWatch=n=>/forerunner|f[eē]nix|venu|vivo|instinct|epix|enduro|edge|garmin/i.test(n||'');
+function hrRemember(name){if(!name)return;const k=ls.get('hrKnown',[]).filter(x=>x.name!==name);k.unshift({name,t:Date.now()});ls.set('hrKnown',k.slice(0,6));hrRenderKnown()}
+function hrForget(name){ls.set('hrKnown',ls.get('hrKnown',[]).filter(x=>x.name!==name));hrRenderKnown()}
+function hrRenderKnown(){const el=$('hrKnown');if(!el)return;const k=ls.get('hrKnown',[]);
+ el.innerHTML=k.length?k.map(x=>{const n=x.name.replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';'),q=JSON.stringify(x.name).replace(/"/g,'&quot;');
+  return `<span style="display:inline-flex;gap:4px"><button class="sbtn pri" onclick="connectHr(${q})">${isWatch(x.name)?'⌚':'❤️'} ${n}</button><button class="sbtn" title="Oublier" onclick="hrForget(${q})">✕</button></span>`}).join('')
+  :'<span style="color:var(--mut);font-size:13px">Aucun appareil mémorisé pour l’instant : connecte une première fois ta montre ou ta ceinture, elle apparaîtra ici.</span>'}
 async function hrLink(){
  const s=await(await hrDev.gatt.connect()).getPrimaryService(HRS);const c=await s.getCharacteristic(HRM);
  await sub(c,dv=>{const v=parseHR(dv);if(v>0){live.hr=v;live.lastHr=Date.now()}});
@@ -1290,7 +1321,7 @@ async function finish(){
 }
 function summarize(s){const P=s.pts,avg=k=>{const v=P.map(p=>p[k]).filter(x=>x!=null&&x>0);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null},max=k=>Math.max(0,...P.map(p=>p[k]||0));
  s.sum={dur:s.el,dist:s.dist,kcal:Math.round(s.kj),gain:Math.round(s.gain||0),pAvg:avg('p'),pMax:max('p'),hrAvg:avg('hr'),hrMax:max('hr'),cadAvg:avg('c'),spdAvg:s.el?s.dist/s.el*3.6:0,spdMax:max('v')}}
-function resetDash(){if(rideMap){rideMap.destroy();rideMap=null}route=null;prog=null;$('progPanel').style.display='none';$('routePanel').style.display='none';$('livePanel').style.display='flex';$('clock').textContent='00:00:00';['mDist'].forEach(i=>$(i).textContent='0,00');$('mKcal').textContent='0';$('mAvg').textContent='--';$('mPavg').textContent='--';$('mPmax').textContent='--';drawLive()}
+function resetDash(){const mx=document.querySelector('.maxi');if(mx)toggleMaxi(mx.id);Street.last=null;Street.cur=null;if(rideMap){rideMap.destroy();rideMap=null}route=null;prog=null;$('progPanel').style.display='none';$('routePanel').style.display='none';$('livePanel').style.display='flex';$('clock').textContent='00:00:00';['mDist'].forEach(i=>$(i).textContent='0,00');$('mKcal').textContent='0';$('mAvg').textContent='--';$('mPavg').textContent='--';$('mPmax').textContent='--';drawLive()}
 
 // boucle 1 seconde
 setInterval(()=>{
@@ -1317,7 +1348,7 @@ function paint(){
  if(sess){$('clock').textContent=hms(sess.el);$('mDist').textContent=fr(sess.dist/1000,2);$('mKcal').textContent=fr(sess.kj);
   $('mAvg').textContent=sess.el>5?fr(sess.dist/sess.el*3.6,1):'--';
   const ps=sess.pts.map(x=>x.p).filter(x=>x>0);if(ps.length){$('mPavg').textContent=Math.round(ps.reduce((a,b)=>a+b,0)/ps.length);$('mPmax').textContent=Math.max(...ps)}}
- if(prog)drawProg();else if(route){drawRoute();if(rideMap)rideMap.update(Math.min(sess?sess.dist:0,route.dist))}else drawLive();
+ if(prog)drawProg();else if(route){drawRoute();if(rideMap)rideMap.update(Math.min(sess?sess.dist:0,route.dist));Street.kick()}else drawLive();
 }
 /* ---------- parcours : profil, pente, consigne ---------- */
 const CMAP_DEF=[0,2,4,6,7.5,9,10.5,12,14];
@@ -1424,8 +1455,9 @@ function posAt(r,d){const T=trackOf(r),C=T.cum,L=T.ll;if(d<=0)return L[0];if(d>=
 const TILES={
  light:{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',nz:19,att:'© Esri, OpenStreetMap'},
  dark:{url:'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',nz:16,att:'© Esri, OpenStreetMap'},
- backup:{url:'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',nz:17,att:'© OpenStreetMap, SRTM | © OpenTopoMap'}};
-const tileDef=()=>TILES[document.documentElement.dataset.theme==='light'?'light':'dark'];
+ backup:{url:'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',nz:17,att:'© OpenStreetMap, SRTM | © OpenTopoMap'},
+ sat:{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',nz:19,att:'© Esri, Maxar, Earthstar Geographics'}};
+const tileDef=()=>ls.get('sat',false)?TILES.sat:TILES[document.documentElement.dataset.theme==='light'?'light':'dark'];
 function makeMap(el,r,o){
  if(typeof L==='undefined')return null;
  const map=L.map(el,{zoomControl:true,attributionControl:true,tap:true});
@@ -1448,11 +1480,52 @@ function makeMap(el,r,o){
    if(o.follow&&Date.now()-touched>15000){if(map.getZoom()<13)map.setView(p,14,{animate:false});else map.panTo(p,{animate:true})}},
   recenter(){touched=0;map.setView(me.getLatLng(),Math.max(14,map.getZoom()))},
   setTheme(){if(!usingBackup)setTiles(tileDef())},
+  toggleSat(){ls.set('sat',!ls.get('sat',false));usingBackup=false;allMaps.forEach(m=>m.setTheme());toast(ls.get('sat',false)?'🛰️ Vue satellite':'🗺️ Vue plan')},
   destroy(){allMaps.delete(api);map.remove()}};
  allMaps.add(api);setTimeout(()=>map.invalidateSize(),60);return api}
-function setRView(m){rview=m;ls.set('rview',m);document.querySelectorAll('#vtog button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
- $('rProf').style.display=m==='carte'?'none':'';$('rMapBox').style.display=(m==='profil'||!rideMap&&route&&!hasLL(route))?'none':'';
- $('rProf').style.flex=m==='both'?'1':'1';setTimeout(()=>{rideMap&&rideMap.map.invalidateSize();drawRoute()},50)}
+function setRView(m){const ll=route&&hasLL(route);if(m==='rue'&&!ll)m='both';rview=m;ls.set('rview',m);document.querySelectorAll('#vtog button').forEach(b=>{b.classList.toggle('on',b.dataset.m===m);if(b.dataset.m==='rue')b.style.display=ll?'':'none'});
+ $('rProf').style.display=(m==='carte'||m==='rue')?'none':'';$('rMapBox').style.display=(m==='profil'||!rideMap&&route&&!ll)?'none':'';
+ $('rStreetBox').style.display=m==='rue'?'':'none';$('rMapBox').style.flex=m==='rue'?'0.8':'';$('rStreetBox').style.flex=m==='rue'?'1.4':'';
+ if(m==='rue'){Street.last=null;Street.kick()}
+ setTimeout(()=>{rideMap&&rideMap.map.invalidateSize();drawRoute()},50)}
+/* ---------- agrandir / réduire une vue ---------- */
+let hudT=null;
+function toggleMaxi(id){const el=$(id),on=!el.classList.contains('maxi');
+ document.querySelectorAll('.maxi').forEach(x=>{x.classList.remove('maxi');x.querySelector('.mxbtn').textContent='⛶'});
+ if(on){el.classList.add('maxi');el.querySelector('.mxbtn').textContent='✕ Réduire'}
+ let h=$('hud');if(!h){h=document.createElement('div');h.id='hud';h.className='hud';document.body.appendChild(h)}
+ clearInterval(hudT);h.classList.toggle('on',on);
+ if(on){const f=()=>{h.innerHTML=`<span>${live.power!=null?Math.round(live.power):'--'}<small>W</small></span><span style="color:#2fa8ff">${live.cad!=null?Math.round(live.cad):'--'}<small>rpm</small></span><span>${live.spd!=null?live.spd.toFixed(1).replace('.',','):'--'}<small>km/h</small></span><span style="color:#ff4d6d">${live.hr||'--'}<small>bpm</small></span>`};f();hudT=setInterval(f,1000)}
+ if(id==='rStreetBox'&&on){Street.last=null;Street.kick()}
+ setTimeout(()=>{rideMap&&rideMap.map.invalidateSize();try{drawRoute()}catch(e){}},80)}
+/* ---------- vue de la rue : photos Mapillary (gratuit, clé « client token ») ----------
+   Léger : une seule photo affichée, rechargée tous les ~35 m, choisie dans le sens du parcours. */
+// Clé Mapillary par défaut (« client token » : prévue pour être utilisée dans une page web, lecture seule).
+// Une clé saisie dans Réglages › Vue de la rue la remplace.
+const MLY_DEFAULT='MLY|29567713716159285|ca8b4b5de6b20936797e6f5f3d2f8649';
+function bearing(a,b){const t=Math.PI/180,y=Math.sin((b[1]-a[1])*t)*Math.cos(b[0]*t),x=Math.cos(a[0]*t)*Math.sin(b[0]*t)-Math.sin(a[0]*t)*Math.cos(b[0]*t)*Math.cos((b[1]-a[1])*t);return(Math.atan2(y,x)/t+360)%360}
+const Street={last:null,busy:false,cur:null,
+ on(){return rview==='rue'||$('rStreetBox').classList.contains('maxi')},
+ msg(t){$('stMsg').textContent=t},
+ kick(){if(!route||!hasLL(route))return;const d=Math.min(sess?sess.dist:0,route.dist),p=posAt(route,d),q=posAt(route,Math.min(d+30,route.dist));this.update(p[0],p[1],bearing(p,q))},
+ async update(lat,lng,hd){
+  if(!this.on())return;const tok=ls.get('mlyToken','')||MLY_DEFAULT;
+  if(!tok){this.msg('📷 Ajoute ta clé Mapillary dans Réglages › Vue de la rue');return}
+  if(this.busy||(this.last&&hav(this.last,[lat,lng])<35))return;this.busy=true;
+  try{let best=null;
+   for(const dd of [0.0007,0.002,0.005]){
+    const r=await fetch('https://graph.mapillary.com/images?access_token='+encodeURIComponent(tok)+'&fields=id,thumb_1024_url,computed_compass_angle,compass_angle,computed_geometry,geometry&limit=30&bbox='+[lng-dd,lat-dd,lng+dd,lat+dd].map(v=>v.toFixed(6)).join(','));
+    const j=await r.json();if(j.error)throw new Error(j.error.message||'clé refusée');
+    for(const im of j.data||[]){const g=(im.computed_geometry||im.geometry||{}).coordinates;if(!g||!im.thumb_1024_url)continue;
+     const a=im.computed_compass_angle!=null?im.computed_compass_angle:im.compass_angle,da=a==null?90:Math.abs(((a-hd)+540)%360-180);
+     const sc=hav([lat,lng],[g[1],g[0]])+da*0.6;if(!best||sc<best.sc)best={sc,url:im.thumb_1024_url,id:im.id}}
+    if(best)break}
+   this.last=[lat,lng];
+   if(best&&best.id!==this.cur){this.cur=best.id;const A=$('stImg'),B=$('stImg2'),show=A.classList.contains('hid')?A:B,hide=show===A?B:A;
+    show.onload=()=>{show.classList.remove('hid');hide.classList.add('hid')};show.src=best.url;this.msg('')}
+   else if(!best)this.msg(this.cur?'Pas de photo plus proche ici — dernière photo affichée':'Pas de photo de rue disponible à cet endroit')
+  }catch(e){this.msg('Mapillary : '+errTxt(e));log('Vue de la rue : '+errTxt(e))}
+  finally{this.busy=false}}};
 document.querySelectorAll('#vtog button').forEach(b=>b.onclick=()=>setRView(b.dataset.m));
 async function preview(id){
  let r=id.startsWith('lib:')?getLib(id.slice(4)):(await DB.all('routes')).find(x=>x.id===id);if(!r)return;
@@ -1643,7 +1716,7 @@ function cloudSave(){const url=$('clUrl').value.trim(),key=$('clKey').value.trim
 function cloudCopy(){const c=Cloud.cfg();if(!c){toast('Enregistre d’abord la synchro');return}const s=c.url+'|'+c.key+'|'+c.code;
  (navigator.clipboard?navigator.clipboard.writeText(s):Promise.reject()).then(()=>toast('Copié ✓ — colle-le sur l’autre appareil dans le 1er champ',4000)).catch(()=>prompt('Copie ce texte et colle-le sur l’autre appareil :',s))}
 
-DB.open().then(async()=>{const d=ls.get('draft',null);if(d&&d.pts&&d.pts.length>=10){summarize(d);await DB.put(d);toast('Séance interrompue récupérée ✓',3500)}ls.set('draft',null);try{cloudFill()}catch(e){}Cloud.sync()});
+DB.open().then(async()=>{const d=ls.get('draft',null);if(d&&d.pts&&d.pts.length>=10){summarize(d);await DB.put(d);toast('Séance interrompue récupérée ✓',3500)}ls.set('draft',null);try{cloudFill()}catch(e){}try{hrRenderKnown();$('mlyTok').value=ls.get('mlyToken','')}catch(e){}Cloud.sync()});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')Cloud.later()});
 
 /* ---------- historique ---------- */
