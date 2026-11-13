@@ -946,7 +946,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <section class="view" id="v-cfg">
    <div class="cfg">
     <div class="panel">
-     <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border-radius:12px;padding:10px 14px"><b>Version</b><span style="font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-size:18px" id="appVer">v5.1 — 13/11/2026 à 15h15</span></div>
+     <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border-radius:12px;padding:10px 14px"><b>Version</b><span style="font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-size:18px" id="appVer">v5.2 — 13/11/2026 à 15h20</span></div>
      <h3>Affichage</h3>
      <div class="row"><button class="sbtn" onclick="setTheme('dark')">🌙 Fond noir</button><button class="sbtn" onclick="setTheme('light')">☀️ Fond blanc</button></div>
      <h3 style="margin-top:8px">Profil</h3>
@@ -1052,7 +1052,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 <div class="toast" id="toast"></div>
 <script>
 'use strict';
-const APPV='v5.1 — 13/11/2026 à 15h15';
+const APPV='v5.2 — 13/11/2026 à 15h20';
 try{document.getElementById('appVer').textContent=APPV}catch(e){}
 /* ---------- utilitaires ---------- */
 const $=id=>document.getElementById(id);
@@ -1092,6 +1092,8 @@ function hrZone(hr){if(!hr)return'';const p=hr/fcMax();return p<.6?'Zone 1':p<.7
 /* ---------- Bluetooth : constantes ---------- */
 // UUID au format complet : Bluefy (iPad) refuse les numéros courts type 0x1826 (erreur « 2 »).
 const U16=n=>'0000'+n.toString(16).padStart(4,'0')+'-0000-1000-8000-00805f9b34fb';
+// Bluefy renvoie les UUID au format court MAJUSCULE (« 2AD2 »), Chrome au format long minuscule : on normalise.
+const shortU=x=>{const s=String(x).toLowerCase();if(/^[0-9a-f]{4}$/.test(s))return s;const m=s.match(/^0000([0-9a-f]{4})-0000-1000-8000-00805f9b34fb$/);return m?m[1]:s};
 const FTMS=U16(0x1826),IBD=U16(0x2ad2),CPS=U16(0x1818),CPM=U16(0x2a63),CSC=U16(0x1816),CSCM=U16(0x2a5b),HRS=U16(0x180d),HRM=U16(0x2a37),BAT=U16(0x180f),DIS=U16(0x180a);
 const OPT_STD=[FTMS,CPS,CSC,HRS,BAT,DIS,U16(0x1814)];
 const OPT=OPT_STD.concat([U16(0xfff0),'6e400001-b5a3-f393-e0a9-e50e24dcca9e']);
@@ -1176,7 +1178,7 @@ async function connectBike(all){
    log('Service '+s.uuid);
    let chs=[];try{chs=await s.getCharacteristics()}catch(e){log('   (caractéristiques illisibles : '+errTxt(e)+')')}
    for(const c of chs){const p=c.properties;log('   └ '+c.uuid+' ['+['read','write','notify','indicate'].filter(k=>p[k]).join(',')+']');
-    const u=c.uuid.slice(4,8);
+    const u=shortU(c.uuid);
     if(u==='2ad9')cp=c; // FTMS Control Point
     if(p.notify||p.indicate){
      try{
