@@ -941,7 +941,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <section class="view" id="v-cfg">
    <div class="cfg">
     <div class="panel">
-     <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border-radius:12px;padding:10px 14px"><b>Version</b><span style="font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-size:18px">v4.2 — 12/11/2026</span></div>
+     <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border-radius:12px;padding:10px 14px"><b>Version</b><span style="font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-size:18px" id="appVer">v4.6 — 13/11/2026 à 10h27</span></div>
      <h3>Affichage</h3>
      <div class="row"><button class="sbtn" onclick="setTheme('dark')">🌙 Fond noir</button><button class="sbtn" onclick="setTheme('light')">☀️ Fond blanc</button></div>
      <h3 style="margin-top:8px">Profil</h3>
@@ -964,7 +964,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <div class="panel">
      <h3>Diagnostic Bluetooth</h3>
      <div class="kv" id="diagKv"><b>Vélo</b><span>non connecté</span></div>
-     <div class="row"><button class="sbtn" onclick="connectBike(false)">🔍 Chercher seulement les vélos (FTMS)</button><button class="sbtn" onclick="copyLog()">📋 Copier le journal</button></div>
+     <div class="row"><button class="sbtn pri" onclick="openWiz()">🧭 Assistant de connexion</button><button class="sbtn" onclick="copyLog()">📋 Copier le journal</button></div>
      <div class="log" id="log"></div>
     </div>
    </div>
@@ -1013,12 +1013,29 @@ svg.leaflet-image-layer.leaflet-interactive path {
    <li>Touche « Vélo », puis choisis ton vélo dans la liste (son nom ressemble souvent à <i>CHAOKE</i>, <i>FS-…</i>, <i>FTMS</i>, <i>Bike</i>, <i>YS…</i>).</li>
    <li>Toujours bloqué ? Va dans <b>Réglages › Diagnostic</b>, touche « 📋 Copier le journal » et envoie-le-moi.</li>
   </ol>
-  <div class="row"><button class="sbtn pri" onclick="$('bleHelp').style.display='none';connectBike()">🔄 Réessayer</button><button class="sbtn" onclick="$('bleHelp').style.display='none'">Fermer</button></div>
+  <div class="row"><button class="sbtn pri" onclick="$('bleHelp').style.display='none';connectBike()">🔄 Réessayer</button><button class="sbtn" onclick="$('bleHelp').style.display='none';openWiz()">🧭 Assistant de connexion</button><button class="sbtn" onclick="$('bleHelp').style.display='none'">Fermer</button></div>
+ </div>
+</div>
+<div class="modal" id="wiz">
+ <div class="mbox panel" style="width:min(720px,100%)">
+  <div style="display:flex;justify-content:space-between;align-items:center"><h2 style="font-size:22px">🧭 Assistant de connexion du vélo</h2><button class="sbtn" onclick="$('wiz').style.display='none'">✕</button></div>
+  <p style="color:var(--mut);line-height:1.5">Ton vélo : <b>CHAOKE 508B</b>, console <b>SmartBike-508</b> (617-A08), compatible Zwift/Kinomap. Avant tout : <b>ferme Kinomap/Zwift</b> partout (iPad et iPhone), et <b>pédale</b> pour allumer la console. Essaie les méthodes dans l’ordre, et fais une capture d’écran de cette fenêtre si rien ne marche.</p>
+  <div class="cards" style="grid-template-columns:repeat(2,1fr)">
+   <button class="card" onclick="wizRun('tout')"><span class="ic">1️⃣</span><b>Tous les appareils</b><small>Liste complète, choisis ton vélo</small></button>
+   <button class="card" onclick="wizRun('nom')"><span class="ic">2️⃣</span><b>Par nom de vélo</b><small>SmartBike, FS-, CHAOKE, 508…</small></button>
+   <button class="card" onclick="wizRun('ftms')"><span class="ic">3️⃣</span><b>Standard vélo (FTMS)</b><small>Comme Zwift / Kinomap</small></button>
+   <button class="card" onclick="wizRun('simple')"><span class="ic">4️⃣</span><b>Test minimal</b><small>Vérifie juste que l’iPad voit le vélo</small></button>
+  </div>
+  <div id="wizRes" style="font-size:16px;min-height:22px"></div>
+  <div class="log" id="wizLog" style="height:200px"></div>
+  <div class="row"><button class="sbtn" onclick="copyLog()">📋 Copier le journal</button></div>
  </div>
 </div>
 <div class="toast" id="toast"></div>
 <script>
 'use strict';
+const APPV='v4.6 — 13/11/2026 à 10h27';
+try{document.getElementById('appVer').textContent=APPV}catch(e){}
 /* ---------- utilitaires ---------- */
 const $=id=>document.getElementById(id);
 const fr=(v,d=0)=>v==null||isNaN(v)?'--':v.toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -1026,7 +1043,7 @@ const pad=n=>String(n).padStart(2,'0');
 const hms=s=>{s=Math.floor(s);return pad(Math.floor(s/3600))+':'+pad(Math.floor(s%3600/60))+':'+pad(s%60)};
 const ls={get(k,d){try{const v=localStorage.getItem('jeride.'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('jeride.'+k,JSON.stringify(v))}catch(e){}}};
 function toast(t,ms=2600){const e=$('toast');e.textContent=t;e.style.display='block';clearTimeout(e._t);e._t=setTimeout(()=>e.style.display='none',ms)}
-const logLines=[];function log(t){const s=new Date().toLocaleTimeString('fr-FR')+'  '+t;logLines.push(s);if(logLines.length>400)logLines.shift();const e=$('log');e.textContent=logLines.join('\n');e.scrollTop=1e9}
+const logLines=[];function log(t){try{const w=$('wizLog');if(w&&$('wiz').style.display==='flex'){w.textContent+=t+'\n';w.scrollTop=1e9}}catch(e){}const s=new Date().toLocaleTimeString('fr-FR')+'  '+t;logLines.push(s);if(logLines.length>400)logLines.shift();const e=$('log');e.textContent=logLines.join('\n');e.scrollTop=1e9}
 function copyLog(){const t=logLines.join('\n');(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('Journal copié'),()=>toast('Copie impossible : sélectionne le texte à la main'))}
 const hex=dv=>[...new Uint8Array(dv.buffer,dv.byteOffset,dv.byteLength)].map(b=>pad(b.toString(16))).join(' ');
 
@@ -1059,8 +1076,11 @@ const FTMS=0x1826,IBD=0x2ad2,CPS=0x1818,CPM=0x2a63,CSC=0x1816,CSCM=0x2a5b,HRS=0x
 const OPT=[FTMS,CPS,CSC,HRS,BAT,DIS,0x1814,'0000fff0-0000-1000-8000-00805f9b34fb','6e400001-b5a3-f393-e0a9-e50e24dcca9e'];
 let bikeDev=null,hrDev=null;
 function chip(id,state,label){const c=$(id);c.querySelector('.dot').className='dot'+(state==='ok'?' ok':state==='wait'?' wait':'');c.querySelector('span:last-child').textContent=label}
-function needBle(){if(navigator.bluetooth)return true;toast('Bluetooth indisponible ici : ouvre la page dans Bluefy',4000);return false}
+function needBle(){if(navigator.bluetooth)return true;alert('Bluetooth indisponible dans ce navigateur.\n\nSur iPad, Safari et Chrome ne savent PAS accéder au Bluetooth (limitation d’Apple).\n\n➜ Installe l’app gratuite « Bluefy – Web BLE Browser » (App Store) et ouvre cette page dedans.');return false}
 
+function openWiz(){$('wiz').style.display='flex';$('wizLog').textContent='Version '+APPV+' · '+navigator.userAgent+'\n';$('wizRes').textContent=''}
+async function wizRun(m){$('wizRes').textContent='⏳ Recherche… choisis ton vélo dans la liste qui s’ouvre.';log('——— Méthode '+m+' ———');await connectBike(m);
+ if(bikeDev&&bikeDev.gatt&&bikeDev.gatt.connected)$('wizRes').innerHTML=Object.keys(seenIBD).length?'✅ Connecté et données reçues : '+Object.keys(seenIBD).join(', '):'✅ Connecté ! Pédale : les données doivent apparaître ici.'}
 /* Indoor Bike Data (FTMS) */
 function parseIBD(dv){
  let f=dv.getUint16(0,true),o=2;const r={};
@@ -1101,10 +1121,22 @@ async function connectBike(all){
  try{
   chip('cBike','wait','Recherche…');step='recherche de l’appareil';
   // On liste tous les appareils Bluetooth : certains vélos n'annoncent pas leur type, ils n'apparaîtraient pas sinon.
-  const opts=all===false?{filters:[{services:[FTMS]},{services:[CPS]},{services:[CSC]}],optionalServices:OPT}:{acceptAllDevices:true,optionalServices:OPT};
-  bikeDev=await navigator.bluetooth.requestDevice(opts);
+  const NAMES=['SmartBike','Smart','FS-','CHAOKE','Chaoke','508','617','Bike','BIKE','FTMS','YS','MRK','QB','KS','JT','Jintuo','iConsole','Console'];
+  const M=all||'tout';
+  const opts=M==='ftms'||all===false?{filters:[{services:[FTMS]},{services:[CPS]},{services:[CSC]}],optionalServices:OPT}
+   :M==='nom'?{filters:NAMES.map(n=>({namePrefix:n})),optionalServices:OPT}
+   :M==='simple'?{acceptAllDevices:true}
+   :{acceptAllDevices:true,optionalServices:OPT};
+  log('Méthode de recherche : '+M+' · Bluefy/Bluetooth : '+(navigator.bluetooth?'présent':'absent'));
+  // IMPORTANT : requestDevice() doit être appelé AVANT tout « await », sinon iOS/Bluefy
+  // considère que ce n'est plus un appui de l'utilisateur et la liste ne s'ouvre jamais.
+  const pick=navigator.bluetooth.requestDevice(opts);
+  try{if(navigator.bluetooth.getAvailability)navigator.bluetooth.getAvailability().then(a=>log('Bluetooth disponible : '+a)).catch(()=>{})}catch(e){}
+  bikeDev=await pick;
   log('Appareil choisi : '+(bikeDev.name||'(sans nom)')+' · id '+bikeDev.id);
-  bikeDev.addEventListener('gattserverdisconnected',()=>{chip('cBike','','Vélo déconnecté');log('⚠ Vélo déconnecté');toast('Vélo déconnecté — touche « Vélo » pour reconnecter',4000)});
+  const onDisc=()=>{chip('cBike','','Vélo déconnecté');log('⚠ Vélo déconnecté');toast('Vélo déconnecté — touche « Vélo » pour reconnecter',4000)};
+  try{bikeDev.addEventListener('gattserverdisconnected',onDisc)}catch(e){try{bikeDev.ongattserverdisconnected=onDisc}catch(e2){}}
+  if(!bikeDev.gatt)throw new Error('cet appareil ne propose pas de connexion GATT');
   step='connexion au vélo';chip('cBike','wait','Connexion…');
   const srv=await bikeDev.gatt.connect();log('Connexion GATT ✓');
   step='lecture des services';
@@ -1137,6 +1169,7 @@ async function connectBike(all){
  }
 }
 function showBleHelp(st,msg){
+ if($('wiz').style.display==='flex'){$('wizRes').innerHTML='❌ Échec à l’étape « '+st+' » : <b>'+msg+'</b>';return}
  const h=$('bleHelp');h.querySelector('.bh-err').textContent='Étape : '+st+' — '+msg;h.style.display='flex'}
 async function sub(c,fn){c.addEventListener('characteristicvaluechanged',ev=>fn(ev.target.value));await c.startNotifications()}
 let rawCount=0;function logRaw(tag,dv){if(rawCount++<60||rawCount%50===0)log(tag+' : '+hex(dv))}
@@ -1317,18 +1350,28 @@ function renderLib(){
 function miniProfile(x){const e=x.e,n=e.length,mn=Math.min(...e),mx=Math.max(mn+300,...e),W=300,H=34,stp=Math.max(1,Math.floor(n/80));let d='M0,'+H;
  for(let i=0;i<n;i+=stp)d+=`L${(i/(n-1)*W).toFixed(1)},${(H-(e[i]-mn)/((mx-mn)||1)*(H-4)).toFixed(1)}`;
  return`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:34px;margin-top:6px;display:block"><path d="${d}L${W},${H}Z" fill="url(#mpg)"/></svg>`}
-/* ---------- cartes (Leaflet + fonds OpenStreetMap / CARTO, chargés en ligne sur l'iPad) ---------- */
+/* ---------- cartes (Leaflet + fonds Esri / OpenTopoMap sans clé, chargés en ligne sur l'iPad) ---------- */
 let rideMap=null,histMap=null,prevMap=null,rview=ls.get('rview','both');const allMaps=new Set();
 function hasLL(r){return !!(r&&((r.ll&&r.ll.length>1)||(r.pts&&r.pts[0]&&r.pts[0].length>=4)))}
 function trackOf(r){if(r._trk)return r._trk;const L=r.ll?r.ll:r.pts.map(p=>[p[2],p[3]]);const c=[0];for(let i=1;i<L.length;i++)c.push(c[i-1]+hav(L[i-1],L[i]));
  const k=c[c.length-1]?r.dist/c[c.length-1]:1;r._trk={ll:L,cum:c.map(x=>x*k)};return r._trk}
 function posAt(r,d){const T=trackOf(r),C=T.cum,L=T.ll;if(d<=0)return L[0];if(d>=C[C.length-1])return L[L.length-1];let lo=0,hi=C.length-1;while(hi-lo>1){const m=(lo+hi)>>1;if(C[m]<=d)lo=m;else hi=m}
  const f=(d-C[lo])/((C[hi]-C[lo])||1);return[L[lo][0]+(L[hi][0]-L[lo][0])*f,L[lo][1]+(L[hi][1]-L[lo][1])*f]}
-const tileUrl=()=>document.documentElement.dataset.theme==='light'?'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png':'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+/* Fonds de carte SANS clé API (CARTO renvoie désormais « API KEY REQUIRED »).
+   1er choix : Esri ; secours automatique : OpenTopoMap si les tuiles Esri ne chargent pas. */
+const TILES={
+ light:{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',nz:19,att:'© Esri, OpenStreetMap'},
+ dark:{url:'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',nz:16,att:'© Esri, OpenStreetMap'},
+ backup:{url:'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',nz:17,att:'© OpenStreetMap, SRTM | © OpenTopoMap'}};
+const tileDef=()=>TILES[document.documentElement.dataset.theme==='light'?'light':'dark'];
 function makeMap(el,r,o){
  if(typeof L==='undefined')return null;
  const map=L.map(el,{zoomControl:true,attributionControl:true,tap:true});
- const tl=L.tileLayer(tileUrl(),{subdomains:'abcd',maxZoom:19,attribution:'© OpenStreetMap © CARTO'}).addTo(map);
+ let tl=null,usingBackup=false,errs=0;
+ function setTiles(d){if(tl)map.removeLayer(tl);errs=0;
+  tl=L.tileLayer(d.url,{subdomains:'abc',maxZoom:19,maxNativeZoom:d.nz,attribution:d.att}).addTo(map);
+  tl.on('tileerror',()=>{if(!usingBackup&&++errs>=4){usingBackup=true;log('Carte : fond principal indisponible → fond de secours');setTiles(TILES.backup)}})}
+ setTiles(tileDef());
  const T=trackOf(r);
  L.polyline(T.ll,{color:'#000',weight:9,opacity:.25}).addTo(map);
  const all=L.polyline(T.ll,{color:'#ff9a3c',weight:5,opacity:.55}).addTo(map);
@@ -1342,7 +1385,7 @@ function makeMap(el,r,o){
   update(d){const p=posAt(r,d);me.setLatLng(p);const C=T.cum;let i=0;while(i<C.length&&C[i]<=d)i++;done.setLatLngs(T.ll.slice(0,i).concat([p]));
    if(o.follow&&Date.now()-touched>15000){if(map.getZoom()<13)map.setView(p,14,{animate:false});else map.panTo(p,{animate:true})}},
   recenter(){touched=0;map.setView(me.getLatLng(),Math.max(14,map.getZoom()))},
-  setTheme(){tl.setUrl(tileUrl())},
+  setTheme(){if(!usingBackup)setTiles(tileDef())},
   destroy(){allMaps.delete(api);map.remove()}};
  allMaps.add(api);setTimeout(()=>map.invalidateSize(),60);return api}
 function setRView(m){rview=m;ls.set('rview',m);document.querySelectorAll('#vtog button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
