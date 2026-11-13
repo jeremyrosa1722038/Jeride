@@ -864,7 +864,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   </div>
   <div class="sp"></div>
   <button class="chip" id="cBike" onclick="connectBike()"><span class="dot"></span><span>Vélo</span></button>
-  <button class="chip" id="cHr" onclick="connectHr()"><span class="dot"></span><span>Cardio</span></button>
+  <button class="chip" id="cHr" onclick="connectHr()"><span class="dot"></span><span>BPM</span></button>
   <button class="chip hide-s" onclick="toggleTheme()" title="Thème">☀️ / 🌙</button>
   <div class="chip clock" id="clock">00:00:00</div>
  </div>
@@ -911,7 +911,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
      <div class="panel live" id="livePanel">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
        <div class="lbl">10 dernières minutes</div>
-       <div class="legend"><span style="color:var(--org)">Watts</span><span style="color:var(--red)">Cardio</span><span style="color:var(--blu)">Cadence</span></div>
+       <div class="legend"><span style="color:var(--org)">Watts</span><span style="color:var(--red)">BPM</span><span style="color:var(--blu)">Cadence</span></div>
       </div>
       <div id="liveMsg" style="position:absolute;left:0;right:0;top:50%;text-align:center;color:var(--mut);font-weight:700;font-size:17px">Touche « Démarrer » pour lancer la séance</div><svg id="liveSvg" viewBox="0 0 600 220" preserveAspectRatio="none"></svg>
      </div>
@@ -941,11 +941,11 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <section class="view" id="v-cfg">
    <div class="cfg">
     <div class="panel">
-     <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border-radius:12px;padding:10px 14px"><b>Version</b><span style="font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-size:18px" id="appVer">v4.6 — 13/11/2026 à 10h27</span></div>
+     <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border-radius:12px;padding:10px 14px"><b>Version</b><span style="font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-size:18px" id="appVer">v4.8 — 13/11/2026 à 10h44</span></div>
      <h3>Affichage</h3>
      <div class="row"><button class="sbtn" onclick="setTheme('dark')">🌙 Fond noir</button><button class="sbtn" onclick="setTheme('light')">☀️ Fond blanc</button></div>
      <h3 style="margin-top:8px">Profil</h3>
-     <div class="kv"><b>Âge (zones cardio)</b><span><input id="age" type="number" min="10" max="99" style="width:80px;font:inherit;padding:6px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--txt)"></span>
+     <div class="kv"><b>Âge (zones de fréquence cardiaque)</b><span><input id="age" type="number" min="10" max="99" style="width:80px;font:inherit;padding:6px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--txt)"></span>
      <b>FC max estimée</b><span id="fcmax">--</span></div>
      <h3 style="margin-top:8px">Puissance de référence (FTP)</h3>
      <p style="color:var(--mut);font-size:13px">Les programmes sont calculés en % de ta FTP (puissance tenable environ 1 h). Pas de valeur ? Lance le programme « Test FTP » : l'appli la calculera.</p>
@@ -957,9 +957,22 @@ svg.leaflet-image-layer.leaflet-interactive path {
      <h3 style="margin-top:8px">Sauvegarde</h3>
      <div class="row"><button class="sbtn" onclick="exportAll()">💾 Exporter tout</button>
      <label class="sbtn">📂 Restaurer<input type="file" accept=".json,application/json" style="display:none" onchange="importAll(this)"></label></div>
+     <p style="color:var(--mut);font-size:13px">Pour retrouver tes séances sur un autre appareil : <b>Exporter tout</b> → « Enregistrer dans Fichiers » → <b>iCloud Drive</b>. Sur l'autre appareil : <b>Restaurer</b> → choisis le fichier. Les séances sont <b>ajoutées</b>, rien n'est effacé.</p>
+     <h3 style="margin-top:8px">❤️ Fréquence cardiaque (BPM)</h3>
+     <p style="color:var(--mut);font-size:13px">Ceinture ou brassard Bluetooth, ou <b>montre Garmin</b> : sur la montre, menu › Capteurs (ou FC poignet) › <b>« Diffuser la fréquence cardiaque »</b>, puis touche « BPM » en haut de l’écran.</p>
+     <div class="row"><button class="sbtn pri" onclick="connectHr()">❤️ Connecter la fréquence cardiaque</button><button class="sbtn" onclick="connectHr(true)">📡 Voir tous les appareils</button><button class="sbtn" onclick="hrHelp()">❓ Aide Garmin</button></div>
+     <h3 style="margin-top:8px">☁️ Synchronisation cloud (iPad, iPhone…)</h3>
+     <p style="color:var(--mut);font-size:13px">Tes séances et parcours sont envoyés en ligne (Supabase, gratuit) et apparaissent sur tous tes appareils. Mets <b>exactement les mêmes 3 valeurs</b> sur chaque appareil. Astuce : sur le 2ᵉ appareil, colle le texte copié avec « 📋 Copier pour un autre appareil » dans le 1er champ, les 3 champs se remplissent seuls.</p>
+     <div class="kv">
+      <b>Adresse du projet</b><span><input id="clUrl" placeholder="https://xxxx.supabase.co" oninput="cloudPaste(this.value)" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;font:inherit;font-size:14px;padding:6px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--txt)"></span>
+      <b>Clé anon / publishable</b><span><input id="clKey" placeholder="eyJ… ou sb_publishable_…" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;font:inherit;font-size:14px;padding:6px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--txt)"></span>
+      <b>Code de synchro (secret)</b><span style="display:flex;gap:6px"><input id="clCode" placeholder="16 caractères mini" autocomplete="off" autocapitalize="off" spellcheck="false" style="flex:1;min-width:0;font:inherit;font-size:14px;padding:6px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--txt)"><button class="sbtn" onclick="cloudGen()" title="Générer un code">🎲</button></span>
+      <b>État</b><span id="cloudSt" style="font-size:13px">Désactivée</span>
+     </div>
+     <div class="row"><button class="sbtn pri" onclick="cloudSave()">💾 Enregistrer et synchroniser</button><button class="sbtn" onclick="Cloud.sync(true)">🔄 Synchroniser</button><button class="sbtn" onclick="cloudCopy()">📋 Copier pour un autre appareil</button></div>
      <h3 style="margin-top:8px">Test sans vélo</h3>
      <div class="row"><button class="sbtn" id="bDemo" onclick="toggleDemo()">🧪 Lancer le mode démo</button></div>
-     <p style="color:var(--mut);font-size:13px">Le mode démo simule un vélo et un cardio pour essayer l'interface.</p>
+     <p style="color:var(--mut);font-size:13px">Le mode démo simule un vélo et une fréquence cardiaque pour essayer l'interface.</p>
     </div>
     <div class="panel">
      <h3>Diagnostic Bluetooth</h3>
@@ -1034,7 +1047,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 <div class="toast" id="toast"></div>
 <script>
 'use strict';
-const APPV='v4.6 — 13/11/2026 à 10h27';
+const APPV='v4.8 — 13/11/2026 à 10h44';
 try{document.getElementById('appVer').textContent=APPV}catch(e){}
 /* ---------- utilitaires ---------- */
 const $=id=>document.getElementById(id);
@@ -1065,7 +1078,7 @@ let cran=ls.get('cran',1);
 const nb=$('nb');for(let i=1;i<=10;i++){const b=document.createElement('button');b.textContent=i;b.onclick=()=>{cran=i;ls.set('cran',i);paintCran()};nb.appendChild(b)}
 function paintCran(){[...nb.children].forEach((b,i)=>b.classList.toggle('on',i+1===cran))}paintCran();
 
-/* ---------- profil / zones cardio ---------- */
+/* ---------- profil / zones de fréquence cardiaque ---------- */
 let age=ls.get('age',40);$('age').value=age;
 const fcMax=()=>Math.round(208-0.7*age);
 function updAge(){age=+$('age').value||40;ls.set('age',age);$('fcmax').textContent=fcMax()+' BPM'}$('age').onchange=updAge;updAge();
@@ -1173,26 +1186,46 @@ function showBleHelp(st,msg){
  const h=$('bleHelp');h.querySelector('.bh-err').textContent='Étape : '+st+' — '+msg;h.style.display='flex'}
 async function sub(c,fn){c.addEventListener('characteristicvaluechanged',ev=>fn(ev.target.value));await c.startNotifications()}
 let rawCount=0;function logRaw(tag,dv){if(rawCount++<60||rawCount%50===0)log(tag+' : '+hex(dv))}
-async function connectHr(){
+/* Fréquence cardiaque : ceinture / brassard Bluetooth (Polar, Wahoo, Garmin HRM, Coospo…)
+   ou montre Garmin en mode « Diffuser la fréquence cardiaque ». Tous utilisent le service
+   standard Heart Rate (0x180D). On ajoute les noms courants au cas où la montre n'annonce
+   pas ce service dans sa publicité Bluetooth. */
+const HR_NAMES=['Forerunner','Fenix','fenix','Fēnix','Venu','vivo','Vivo','Instinct','Epix','epix','Enduro','Edge','HRM','Garmin','Polar','H10','H9','OH1','Verity','TICKR','Wahoo','COOSPO','Coospo','CooSpo','Magene','XOSS','Suunto','COROS','Coros','Amazfit','Scosche','Rhythm','Decathlon','Kalenji','HR'];
+let hrManual=false,hrRetry=0;
+function hrHelp(){alert('Fréquence cardiaque introuvable ?\n\n⌚ MONTRE GARMIN :\nSur la montre, maintiens le bouton du haut à gauche (MENU) › Capteurs et accessoires (ou Fréquence cardiaque au poignet) › « Diffuser la fréquence cardiaque » › Démarrer.\nLa montre affiche alors un cœur qui clignote : ne la laisse pas se mettre en veille, et ferme Garmin Connect / Zwift / Kinomap pendant la connexion.\n\n❤️ CEINTURE / BRASSARD :\nMouille les électrodes et mets-la : elle ne s’allume qu’au contact de la peau.\n\nRéessaie ensuite le bouton « BPM ». Si rien n’apparaît : Réglages › Fréquence cardiaque › « Voir tous les appareils ».')}
+async function connectHr(all){
  if(!needBle())return;
  try{chip('cHr','wait','Recherche…');
-  hrDev=await navigator.bluetooth.requestDevice({filters:[{services:[HRS]}],optionalServices:[BAT]});
-  hrDev.addEventListener('gattserverdisconnected',()=>{chip('cHr','','Cardio déconnecté');hrDev=null});
-  const s=await(await hrDev.gatt.connect()).getPrimaryService(HRS);const c=await s.getCharacteristic(HRM);
-  await sub(c,dv=>{live.hr=parseHR(dv);live.lastHr=Date.now()});
-  chip('cHr','ok',hrDev.name||'Cardio');log('Cardio connecté : '+(hrDev.name||''));toast('Cardio connecté ✓');
- }catch(e){chip('cHr','',hrDev?'Cardio':'Cardio');hrDev=null;log('Erreur cardio : '+errTxt(e));if(!(e&&e.name==='NotFoundError'&&/cancel/i.test(e.message||'')))toast('Cardio : '+errTxt(e),5000)}
+  // requestDevice en tout premier (sinon iOS/Bluefy n'ouvre pas la liste)
+  hrDev=await navigator.bluetooth.requestDevice(all===true?{acceptAllDevices:true,optionalServices:[HRS,BAT]}
+   :{filters:[{services:[HRS]}].concat(HR_NAMES.map(n=>({namePrefix:n}))),optionalServices:[HRS,BAT]});
+  hrManual=false;hrRetry=0;
+  hrDev.addEventListener('gattserverdisconnected',hrLost);
+  await hrLink();
+  const watch=/forerunner|f[eē]nix|venu|vivo|instinct|epix|enduro|edge|garmin/i.test(hrDev.name||'');
+  log('Fréquence cardiaque connectée : '+(hrDev.name||'(sans nom)')+(watch?' (montre Garmin)':''));toast((watch?'⌚ Montre':'❤️ Capteur')+' connecté(e) ✓ — BPM reçus',3000);
+ }catch(e){const d=hrDev;hrDev=null;try{d&&d.removeEventListener('gattserverdisconnected',hrLost)}catch(x){}chip('cHr','','BPM');log('Erreur fréquence cardiaque : '+errTxt(e));
+  if(e&&e.name==='NotFoundError'&&/cancel/i.test(e.message||''))return;
+  if(/getPrimaryService|180d|heart/i.test(errTxt(e)))alert('Cet appareil ne transmet pas de fréquence cardiaque.\n\nChoisis plutôt ta ceinture, ton brassard ou ta montre Garmin (en mode « Diffuser la fréquence cardiaque »).');else hrHelp()}
 }
+async function hrLink(){
+ const s=await(await hrDev.gatt.connect()).getPrimaryService(HRS);const c=await s.getCharacteristic(HRM);
+ await sub(c,dv=>{const v=parseHR(dv);if(v>0){live.hr=v;live.lastHr=Date.now()}});
+ chip('cHr','ok',hrDev.name||'BPM')}
+// Reconnexion automatique (la montre ou la ceinture décroche parfois quelques secondes)
+function hrLost(){if(!hrDev||hrManual)return;chip('cHr','wait','BPM : reconnexion…');log('⚠ Fréquence cardiaque perdue → reconnexion');
+ if(hrRetry++>=5){chip('cHr','','BPM déconnecté');toast('Fréquence cardiaque déconnectée — touche « BPM » pour reconnecter',4500);hrDev=null;return}
+ setTimeout(()=>{if(hrDev)hrLink().then(()=>{hrRetry=0;log('Fréquence cardiaque reconnectée ✓')}).catch(()=>hrLost())},2000)}
 function diag(){const k=$('diagKv');k.innerHTML='<b>Vélo</b><span>'+(bikeDev?(bikeDev.name||'sans nom'):'non connecté')+'</span><b>Données reçues</b><span>'+(Object.keys(seenIBD).join(', ')||'—')+'</span><b>Roulette transmise ?</b><span>'+(seenIBD.res?'✅ oui':(Object.keys(seenIBD).length?'❌ non (saisie manuelle)':'—'))+'</span>'}
 
 /* ---------- mode démo ---------- */
 let demoT=null;
 function toggleDemo(){
- if(demoT){clearInterval(demoT);demoT=null;$('bDemo').textContent='🧪 Lancer le mode démo';chip('cBike','','Vélo');chip('cHr','','Cardio');return}
+ if(demoT){clearInterval(demoT);demoT=null;$('bDemo').textContent='🧪 Lancer le mode démo';chip('cBike','','Vélo');chip('cHr','','BPM');return}
  let t=0;demoT=setInterval(()=>{t++;const p=170+45*Math.sin(t/25)+20*Math.sin(t/6)+cran*6;
   onBike({power:Math.round(p),cad:Math.round(80+8*Math.sin(t/17)),spd:+(22+4*Math.sin(t/25)).toFixed(1)},'démo');
   live.hr=Math.round(135+15*Math.sin(t/40)+p/40);live.lastHr=Date.now()},1000);
- chip('cBike','ok','Vélo (démo)');chip('cHr','ok','Cardio (démo)');$('bDemo').textContent='⏹ Arrêter le mode démo';toast('Mode démo lancé');
+ chip('cBike','ok','Vélo (démo)');chip('cHr','ok','BPM (démo)');$('bDemo').textContent='⏹ Arrêter le mode démo';toast('Mode démo lancé');
 }
 
 /* ---------- séance ---------- */
@@ -1526,7 +1559,63 @@ const DB={db:null,
  all(st='sessions'){if(!this.db)return Promise.resolve(ls.get(st,[]));return new Promise(r=>{const q=this.tx('readonly',st).getAll();q.onsuccess=()=>r(q.result.sort((a,b)=>String(b.id).localeCompare(String(a.id),undefined,{numeric:true})));q.onerror=()=>r([])})},
  put(s,st='sessions'){if(!this.db){const a=ls.get(st,[]).filter(x=>x.id!==s.id);a.unshift(s);ls.set(st,a);return Promise.resolve()}return new Promise(r=>{const q=this.tx('readwrite',st).put(s);q.onsuccess=q.onerror=()=>r()})},
  del(id,st='sessions'){if(!this.db){ls.set(st,ls.get(st,[]).filter(x=>x.id!==id));return Promise.resolve()}return new Promise(r=>{const q=this.tx('readwrite',st).delete(id);q.onsuccess=q.onerror=()=>r()})}};
-DB.open().then(async()=>{const d=ls.get('draft',null);if(d&&d.pts&&d.pts.length>=10){summarize(d);await DB.put(d);toast('Séance interrompue récupérée ✓',3500)}ls.set('draft',null)});
+/* ---------- synchronisation cloud (Supabase) ----------
+   Chaque enregistrement / suppression est envoyé en ligne ; au démarrage et au retour
+   dans l'appli, on récupère ce qui a été fait sur les autres appareils.
+   Les suppressions sont propagées (« pierre tombale » deleted=true). */
+const rawPut=DB.put.bind(DB),rawDel=DB.del.bind(DB);
+DB.put=(s,st='sessions')=>{s._u=Date.now();return rawPut(s,st).then(()=>Cloud.later())};
+DB.del=(id,st='sessions')=>rawDel(id,st).then(()=>{const q=ls.get('cloudDel',[]);q.push({kind:st,id:String(id),u:Date.now()});ls.set('cloudDel',q);Cloud.later()});
+const Cloud={busy:false,t:null,
+ cfg(){return ls.get('cloud',null)},
+ on(){const c=this.cfg();return !!(c&&c.url&&c.key&&c.code&&c.code.length>=16)},
+ st(t,ok){try{const e=$('cloudSt');if(e){e.textContent=t;e.style.color=ok===true?'var(--grn,#2ee59d)':ok===false?'#ff4d6d':''}}catch(x){}},
+ async rpc(fn,body){const c=this.cfg();const r=await fetch(c.url.replace(/\/+$/,'')+'/rest/v1/rpc/'+fn,{method:'POST',headers:Object.assign({'Content-Type':'application/json',apikey:c.key},/^eyJ/.test(c.key)?{Authorization:'Bearer '+c.key}:{}),body:JSON.stringify(Object.assign({code:c.code},body||{}))});
+  const txt=await r.text();if(!r.ok){let m=txt;try{const j=JSON.parse(txt);m=j.message||j.hint||txt}catch(e){}throw new Error('HTTP '+r.status+' : '+m)}return txt?JSON.parse(txt):null},
+ later(){if(!this.on())return;clearTimeout(this.t);this.t=setTimeout(()=>this.sync(),2500)},
+ async sync(manual){
+  if(!this.on()){if(manual)toast('Renseigne d’abord la synchro cloud dans Réglages',3500);return}
+  if(this.busy)return;this.busy=true;this.st('⏳ Synchronisation…');
+  try{
+   // 1) suppressions en attente
+   const dq=ls.get('cloudDel',[]);if(dq.length){await this.rpc('jeride_put',{items:dq.map(d=>({kind:d.kind,id:d.id,deleted:true,u:d.u,data:null}))});ls.set('cloudDel',[])}
+   // 2) état en ligne vs état local
+   const remote=await this.rpc('jeride_list')||[],R={};remote.forEach(x=>R[x.kind+':'+x.id]=x);
+   let up=[],need=[],gone=0;
+   for(const kind of ['sessions','routes']){
+    const local=await DB.all(kind),Lk={};
+    for(const s of local){const k=kind+':'+s.id,lu=s._u||0,x=R[k];Lk[k]=1;
+     if(!x||(!x.deleted&&lu>x.u))up.push({kind,id:String(s.id),data:s,u:lu,deleted:false});
+     else if(x.deleted&&x.u>=lu){await rawDel(s.id,kind);gone++}
+     else if(x.u>lu)need.push(k)}
+    for(const k in R)if(R[k].kind===kind&&!R[k].deleted&&!Lk[k])need.push(k)}
+   // 3) envoi (par paquets pour les longues séances)
+   for(let i=0;i<up.length;i+=4)await this.rpc('jeride_put',{items:up.slice(i,i+4)});
+   // 4) réception
+   let got=0;for(let i=0;i<need.length;i+=20){const rows=await this.rpc('jeride_get',{keys:need.slice(i,i+20)})||[];
+    for(const r of rows)if(r.data){await rawPut(r.data,r.kind);got++}}
+   const h=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+   this.st('✅ Synchronisé à '+h+' · '+up.length+' envoyé(s), '+got+' reçu(s)'+(gone?', '+gone+' supprimé(s)':''),true);
+   log('Cloud : '+up.length+' envoyé(s), '+got+' reçu(s), '+gone+' supprimé(s)');
+   if(got||gone){try{renderHist()}catch(e){}try{renderRoutes()}catch(e){}if(!manual)toast('☁️ '+(got?got+' séance(s)/parcours reçus':'')+(got&&gone?' · ':'')+(gone?gone+' supprimé(s)':''),3500)}
+   if(manual)toast('☁️ Synchronisé ✓',2500);
+  }catch(e){this.st('❌ '+errTxt(e)+' (nouvel essai plus tard)',false);log('Cloud : erreur '+errTxt(e));if(manual)toast('Synchro impossible : '+errTxt(e),5000)}
+  finally{this.busy=false}}
+};
+function cloudFill(){const c=Cloud.cfg()||{};$('clUrl').value=c.url||'';$('clKey').value=c.key||'';$('clCode').value=c.code||'';Cloud.st(Cloud.on()?'Activée — touche « Synchroniser » pour tester':'Désactivée')}
+function cloudPaste(v){const p=String(v).trim().split('|');if(p.length===3){$('clUrl').value=p[0];$('clKey').value=p[1];$('clCode').value=p[2]}}
+function cloudGen(){if($('clCode').value&&!confirm('Remplacer le code actuel ? Les autres appareils devront utiliser le nouveau code.'))return;const a=new Uint8Array(18);crypto.getRandomValues(a);$('clCode').value=[...a].map(b=>'abcdefghjkmnpqrstuvwxyz23456789'[b%31]).join('')}
+function cloudSave(){const url=$('clUrl').value.trim(),key=$('clKey').value.trim(),code=$('clCode').value.trim();
+ if(!url&&!key&&!code){ls.set('cloud',null);Cloud.st('Désactivée');toast('Synchro cloud désactivée');return}
+ if(!/^https:\/\/.+\.supabase\.co/.test(url)){toast('Adresse invalide : elle doit ressembler à https://xxxx.supabase.co',4500);return}
+ if(key.length<20){toast('Clé anon/publishable manquante',3500);return}
+ if(code.length<16){toast('Code de synchro trop court (16 caractères minimum) — touche 🎲',4000);return}
+ ls.set('cloud',{url,key,code});toast('Synchro cloud enregistrée ✓');Cloud.sync(true)}
+function cloudCopy(){const c=Cloud.cfg();if(!c){toast('Enregistre d’abord la synchro');return}const s=c.url+'|'+c.key+'|'+c.code;
+ (navigator.clipboard?navigator.clipboard.writeText(s):Promise.reject()).then(()=>toast('Copié ✓ — colle-le sur l’autre appareil dans le 1er champ',4000)).catch(()=>prompt('Copie ce texte et colle-le sur l’autre appareil :',s))}
+
+DB.open().then(async()=>{const d=ls.get('draft',null);if(d&&d.pts&&d.pts.length>=10){summarize(d);await DB.put(d);toast('Séance interrompue récupérée ✓',3500)}ls.set('draft',null);try{cloudFill()}catch(e){}Cloud.sync()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')Cloud.later()});
 
 /* ---------- historique ---------- */
 let selId=null,chartKey='p',cache=[];
@@ -1582,7 +1671,7 @@ function showSess(id){
  const S=s.sum,st=(l,v,c)=>`<div class="st"><div class="lbl">${l}</div><div class="v" style="color:${c||'inherit'}">${v}</div></div>`;
  $('hDet').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><div class="lbl">${new Date(s.start).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div><h2 style="font-size:24px">${s.name}</h2></div><button class="sbtn" onclick="selId=null;document.querySelectorAll('.it').forEach(b=>b.classList.remove('on'));renderSummary()">← Résumé</button></div>
  <div class="stats">${st('Durée',S.dur>=3600?hms(S.dur):pad(Math.floor(S.dur/60))+':'+pad(Math.floor(S.dur%60)))+st('Distance',fr(S.dist/1000,2)+'<span class="unit">km</span>')+st('Vit. moy.',fr(S.spdAvg,1)+'<span class="unit">km/h</span>')+st('Puiss. moy.',fr(S.pAvg)+'<span class="unit">W</span>','var(--org)')+st('Puiss. max',fr(S.pMax)+'<span class="unit">W</span>','var(--org)')+st('BPM moy.',fr(S.hrAvg),'var(--red)')+st('Cadence',fr(S.cadAvg),'var(--blu)')+st('Calories',S.kcal,'var(--pur)')+(S.gain?st('Dénivelé',fr(S.gain)+'<span class="unit">m</span>','var(--org)'):'')}</div>
- <div class="ctabs">${[['p','Puissance'],['v','Vitesse'],['c','Cadence'],['hr','Cardio'],['k','Cran']].concat(s.pts.some(p=>p.e!=null)?[['e','Altitude']]:[]).map(([k,l])=>`<button class="${k===chartKey?'on':''}" onclick="chartKey='${k}';showSess(${id})">${l}</button>`).join('')}</div>
+ <div class="ctabs">${[['p','Puissance'],['v','Vitesse'],['c','Cadence'],['hr','Fréquence cardiaque'],['k','Cran']].concat(s.pts.some(p=>p.e!=null)?[['e','Altitude']]:[]).map(([k,l])=>`<button class="${k===chartKey?'on':''}" onclick="chartKey='${k}';showSess(${id})">${l}</button>`).join('')}</div>
  <div class="chart">${bigChart(s.pts,chartKey)}</div>${s.routeId&&s.routeId!=='test'?'<div class="prev-map" id="hMap"></div>':''}
  <div class="row"><button class="sbtn pri" onclick="exportTcx(${id})">⬆️ Exporter pour Strava (.tcx)</button><button class="sbtn" onclick="renameSess(${id})">✏️ Renommer</button><button class="sbtn dan" onclick="delSess(${id})">🗑 Supprimer</button></div>`;
  sessMap(s);
@@ -1614,8 +1703,24 @@ function exportTcx(id){
  const x=`<?xml version="1.0" encoding="UTF-8"?><TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2" xmlns:ns3="http://www.garmin.com/xmlschemas/ActivityExtension/v2"><Activities><Activity Sport="Biking"><Id>${s.start}</Id><Lap StartTime="${s.start}"><TotalTimeSeconds>${Math.round(S.dur)}</TotalTimeSeconds><DistanceMeters>${Math.round(S.dist)}</DistanceMeters><Calories>${S.kcal}</Calories><Intensity>Active</Intensity><TriggerMethod>Manual</TriggerMethod><Track>${tp}</Track></Lap><Notes>${s.name} — JERIDE</Notes></Activity></Activities></TrainingCenterDatabase>`;
  shareFile('jeride_'+s.start.slice(0,10)+'.tcx',x,'application/vnd.garmin.tcx+xml');
 }
-async function exportAll(){const a=await DB.all();shareFile('jeride_sauvegarde_'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(a),'application/json')}
-function importAll(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=async()=>{try{const a=JSON.parse(r.result);for(const s of a)await DB.put(s);toast(a.length+' séance(s) restaurée(s) ✓');renderHist()}catch(e){toast('Fichier invalide')}};r.readAsText(f);inp.value=''}
+/* Sauvegarde complète : séances + parcours importés + réglages (FTP, âge, crans…).
+   L'import FUSIONNE : rien n'est effacé, une séance déjà présente est simplement mise à jour. */
+async function exportAll(){
+ const sessions=await DB.all(),routes=await DB.all('routes'),settings={};
+ try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('jeride.')&&!/^jeride\.(draft|sessions|routes|cloudDel)$/.test(k))settings[k]=localStorage.getItem(k)}}catch(e){}
+ const data={app:'JERIDE',version:APPV,date:new Date().toISOString(),sessions,routes,settings};
+ const d=new Date(),p=n=>String(n).padStart(2,'0');
+ await shareFile('jeride_sauvegarde_'+d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'_'+p(d.getHours())+'h'+p(d.getMinutes())+'.json',JSON.stringify(data),'application/json');
+ toast(sessions.length+' séance(s), '+routes.length+' parcours exportés — range le fichier dans iCloud Drive',4500)}
+function importAll(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=async()=>{try{
+  const j=JSON.parse(r.result),sessions=Array.isArray(j)?j:(j.sessions||[]),routes=Array.isArray(j)?[]:(j.routes||[]);
+  const have=new Set((await DB.all()).map(s=>s.id));let added=0;
+  for(const s of sessions){if(!have.has(s.id))added++;await DB.put(s)}
+  for(const rt of routes)await DB.put(rt,'routes');
+  if(!Array.isArray(j)&&j.settings&&confirm('Reprendre aussi les réglages de cette sauvegarde (FTP, âge, crans, thème) ?')){for(const k in j.settings)try{localStorage.setItem(k,j.settings[k])}catch(e){}
+   toast('Réglages repris — la page va se recharger',2500);setTimeout(()=>location.reload(),2500);return}
+  toast(added+' nouvelle(s) séance(s) ajoutée(s) · '+(sessions.length-added)+' déjà présente(s)'+(routes.length?' · '+routes.length+' parcours':'')+' ✓',4500);renderHist()
+ }catch(e){toast('Fichier invalide')}};r.readAsText(f);inp.value=''}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&running)keepAwake(true)});
 log('JERIDE prêt. Bluetooth : '+(navigator.bluetooth?'disponible ✓':'indisponible (utilise Bluefy)'));
 </script>
