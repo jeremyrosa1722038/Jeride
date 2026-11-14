@@ -43,13 +43,23 @@ main{flex:1;overflow:hidden;position:relative}
 .lbl{font-size:12px;font-weight:700;letter-spacing:1.2px;color:var(--mut);text-transform:uppercase}
 .unit{font-size:16px;color:var(--mut);font-weight:600;margin-left:4px}
 /* séance */
-.ride{display:grid;grid-template-columns:minmax(300px,34%) 1fr;gap:12px;height:100%}
+.ride{display:grid;grid-template-columns:minmax(240px,26%) 1fr;gap:12px;height:100%}
 .metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-content:start}
 @media (min-width:821px){.ride .metrics{height:100%;grid-template-rows:1.5fr 1fr 1fr 1fr}.m{display:flex;flex-direction:column;justify-content:center}}
 .m{padding:12px 14px}
-.m .v{font-size:44px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
-.big{grid-column:span 2;padding:14px 18px;background:linear-gradient(135deg,rgba(255,106,19,.18),var(--panel) 70%);border-color:rgba(255,106,19,.4)}
-.big .v{font-size:88px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.m .v{font-size:32px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+.metrics{gap:8px}
+.metrics .m{padding:8px 11px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.metrics .lbl{font-size:10.5px;letter-spacing:.8px}
+.metrics .unit{font-size:13px}
+.big{grid-column:1/-1;padding:10px 14px;background:linear-gradient(135deg,rgba(255,106,19,.18),var(--panel) 70%);border-color:rgba(255,106,19,.4)}
+.big .v{font-size:60px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.m:not(.big) .bar,.m:not(.big) .pextra{display:none}
+/* mode « réorganiser les cases » (appui long) */
+.metrics.edit .m{outline:2px dashed var(--org);outline-offset:-2px;animation:wig .35s ease-in-out infinite alternate;cursor:pointer}
+.metrics.edit .m.sel{outline:3px solid var(--yel);animation:none;transform:scale(.96)}
+@keyframes wig{from{transform:rotate(-.8deg)}to{transform:rotate(.8deg)}}
+.editbar{position:fixed;left:50%;top:max(12px,env(safe-area-inset-top));transform:translateX(-50%);z-index:960;display:flex;gap:8px;align-items:center;padding:10px 14px;border-radius:14px;background:var(--panel);border:2px solid var(--org);box-shadow:0 8px 30px rgba(0,0,0,.45);font-weight:700;font-size:14px;max-width:calc(100% - 24px);flex-wrap:wrap;justify-content:center}
 .bar{height:8px;border-radius:4px;background:var(--panel2);margin-top:6px;overflow:hidden}
 .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--grn),var(--yel),var(--org));transition:width .4s}
 .right{display:flex;flex-direction:column;gap:12px;min-height:0}
@@ -164,9 +174,26 @@ h3{font-size:18px}
 @media (max-width:820px){
  .ride,.hist,.cfg{grid-template-columns:1fr;height:auto}
  .top{flex-wrap:wrap}.tabs{order:5;margin:0;width:100%}.tabs button{flex:1}
- .big .v{font-size:68px}.m .v{font-size:36px}.nb button{height:48px;font-size:18px}
+ .big .v{font-size:48px}.m .v{font-size:26px}.nb button{height:48px;font-size:18px}
+ .metrics{grid-template-columns:repeat(3,1fr)}
  .chip.hide-s{display:none}
  #v-hist .hist{grid-template-columns:1fr}.cards{grid-template-columns:1fr 1fr}.cmap{grid-template-columns:repeat(3,1fr)}
+}
+/* petit iPhone en portrait (≤ 420 px de large) : tout un peu plus compact */
+@media (max-width:420px){
+ .big .v{font-size:42px}.m .v{font-size:22px}.metrics{gap:6px}.metrics .m{padding:6px 8px}.metrics .lbl{font-size:9.5px;letter-spacing:.5px}
+ .nb{gap:4px}.nb button{height:42px;font-size:15px;border-radius:9px}
+ .btn{height:54px;font-size:16px}
+}
+/* iPhone à l'horizontale : écran large mais très bas (≤ 520 px de haut) */
+@media (min-width:821px) and (max-height:520px){
+ .ride{grid-template-columns:minmax(220px,30%) 1fr}
+ .big .v{font-size:38px}.m .v{font-size:21px}.metrics{gap:5px}.metrics .m{padding:4px 8px}.metrics .lbl{font-size:9px;letter-spacing:.4px}
+ .metrics .unit{font-size:11px}
+ .nb button{height:38px;font-size:15px}.notch{padding:8px 10px}
+ .btn{height:46px;font-size:15px}
+ .live{min-height:0;padding:8px 10px}.rmap{min-height:90px}.rwrap{min-height:80px}
+ .mxbtn{width:36px;height:36px;font-size:16px}.mxbtn.sat{top:52px}
 }
 .vtog{display:flex;gap:4px;background:var(--panel2);padding:3px;border-radius:10px;align-self:flex-start}
 .vtog button{padding:6px 10px;border-radius:8px;font-size:13px;font-weight:700;color:var(--mut)}
@@ -892,16 +919,16 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <!-- SÉANCE -->
   <section class="view on" id="v-ride">
    <div class="ride">
-    <div class="metrics">
-     <div class="panel m big"><div class="lbl">Puissance</div><div class="v" id="mP">--<span class="unit">W</span></div>
+    <div class="metrics" id="metrics">
+     <div class="panel m big" data-k="p"><div class="lbl">Puissance</div><div class="v" id="mP">--<span class="unit">W</span></div>
       <div class="bar"><i id="pBar"></i></div>
-      <div style="font-size:13px;color:var(--mut);margin-top:6px">Moy. <b id="mPavg">--</b> W · Max <b id="mPmax">--</b> W</div></div>
-     <div class="panel m"><div class="lbl">Fréq. cardiaque</div><div class="v" style="color:var(--red)" id="mHr">--</div><div class="lbl" style="color:var(--red)" id="mHrZ">BPM</div></div>
-     <div class="panel m"><div class="lbl">Cadence</div><div class="v" style="color:var(--blu)" id="mCad">--</div><div class="lbl">RPM</div></div>
-     <div class="panel m"><div class="lbl">Vitesse</div><div class="v" id="mSpd">--</div><div class="lbl">km/h</div></div>
-     <div class="panel m"><div class="lbl">Distance</div><div class="v" id="mDist">0,00</div><div class="lbl">km</div></div>
-     <div class="panel m"><div class="lbl">Calories</div><div class="v" style="color:var(--pur)" id="mKcal">0</div><div class="lbl">kcal</div></div>
-     <div class="panel m"><div class="lbl">Vit. moyenne</div><div class="v" id="mAvg">--</div><div class="lbl">km/h</div></div>
+      <div class="pextra" style="font-size:13px;color:var(--mut);margin-top:6px">Moy. <b id="mPavg">--</b> W · Max <b id="mPmax">--</b> W</div></div>
+     <div class="panel m" data-k="hr"><div class="lbl">Fréq. cardiaque</div><div class="v" style="color:var(--red)" id="mHr">--</div><div class="lbl" style="color:var(--red)" id="mHrZ">BPM</div></div>
+     <div class="panel m" data-k="cad"><div class="lbl">Cadence</div><div class="v" style="color:var(--blu)" id="mCad">--</div><div class="lbl">RPM</div></div>
+     <div class="panel m" data-k="spd"><div class="lbl">Vitesse</div><div class="v" id="mSpd">--</div><div class="lbl">km/h</div></div>
+     <div class="panel m" data-k="dist"><div class="lbl">Distance</div><div class="v" id="mDist">0,00</div><div class="lbl">km</div></div>
+     <div class="panel m" data-k="kcal"><div class="lbl">Calories</div><div class="v" style="color:var(--pur)" id="mKcal">0</div><div class="lbl">kcal</div></div>
+     <div class="panel m" data-k="avg"><div class="lbl">Vit. moyenne</div><div class="v" id="mAvg">--</div><div class="lbl">km/h</div></div>
     </div>
     <div class="right">
      <div class="panel live" id="routePanel" style="display:none">
@@ -962,7 +989,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <section class="view" id="v-cfg">
    <div class="cfg">
     <div class="panel">
-     <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border-radius:12px;padding:10px 14px"><b>Version</b><span style="font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-size:18px" id="appVer">v5.4 — 13/11/2026 à 16h15</span></div>
+     <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border-radius:12px;padding:10px 14px"><b>Version</b><span style="font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-size:18px" id="appVer">v5.6 — 14/11/2026 à 11h34</span></div>
      <h3>Affichage</h3>
      <div class="row"><button class="sbtn" onclick="setTheme('dark')">🌙 Fond noir</button><button class="sbtn" onclick="setTheme('light')">☀️ Fond blanc</button></div>
      <h3 style="margin-top:8px">Profil</h3>
@@ -1073,7 +1100,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 <div class="toast" id="toast"></div>
 <script>
 'use strict';
-const APPV='v5.4 — 13/11/2026 à 16h15';
+const APPV='v5.6 — 14/11/2026 à 11h34';
 try{document.getElementById('appVer').textContent=APPV}catch(e){}
 /* ---------- utilitaires ---------- */
 const $=id=>document.getElementById(id);
@@ -1321,7 +1348,7 @@ async function finish(){
 }
 function summarize(s){const P=s.pts,avg=k=>{const v=P.map(p=>p[k]).filter(x=>x!=null&&x>0);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null},max=k=>Math.max(0,...P.map(p=>p[k]||0));
  s.sum={dur:s.el,dist:s.dist,kcal:Math.round(s.kj),gain:Math.round(s.gain||0),pAvg:avg('p'),pMax:max('p'),hrAvg:avg('hr'),hrMax:max('hr'),cadAvg:avg('c'),spdAvg:s.el?s.dist/s.el*3.6:0,spdMax:max('v')}}
-function resetDash(){const mx=document.querySelector('.maxi');if(mx)toggleMaxi(mx.id);Street.last=null;Street.cur=null;if(rideMap){rideMap.destroy();rideMap=null}route=null;prog=null;$('progPanel').style.display='none';$('routePanel').style.display='none';$('livePanel').style.display='flex';$('clock').textContent='00:00:00';['mDist'].forEach(i=>$(i).textContent='0,00');$('mKcal').textContent='0';$('mAvg').textContent='--';$('mPavg').textContent='--';$('mPmax').textContent='--';drawLive()}
+function resetDash(){const mx=document.querySelector('.maxi');if(mx)toggleMaxi(mx.id);Street.last=null;Street.cur=null;Street.zone=null;Street.zoneErr=0;if(rideMap){rideMap.destroy();rideMap=null}route=null;prog=null;$('progPanel').style.display='none';$('routePanel').style.display='none';$('livePanel').style.display='flex';$('clock').textContent='00:00:00';['mDist'].forEach(i=>$(i).textContent='0,00');$('mKcal').textContent='0';$('mAvg').textContent='--';$('mPavg').textContent='--';$('mPmax').textContent='--';drawLive()}
 
 // boucle 1 seconde
 setInterval(()=>{
@@ -1488,6 +1515,26 @@ function setRView(m){const ll=route&&hasLL(route);if(m==='rue'&&!ll)m='both';rvi
  $('rStreetBox').style.display=m==='rue'?'':'none';$('rMapBox').style.flex=m==='rue'?'0.8':'';$('rStreetBox').style.flex=m==='rue'?'1.4':'';
  if(m==='rue'){Street.last=null;Street.kick()}
  setTimeout(()=>{rideMap&&rideMap.map.invalidateSize();drawRoute()},50)}
+/* ---------- réorganiser les cases (appui long ~0,6 s sur une case) ----------
+   Touche une case puis une autre pour les échanger. La 1ʳᵉ case est toujours la grande. */
+const MET_DEF=['p','hr','cad','spd','dist','kcal','avg'];
+let metSel=null,metLP=null;
+function metOrder(){const o=ls.get('metOrder',MET_DEF).filter(k=>MET_DEF.includes(k));MET_DEF.forEach(k=>{if(!o.includes(k))o.push(k)});return o}
+function metApply(){const box=$('metrics');if(!box)return;metOrder().forEach((k,i)=>{const el=box.querySelector('[data-k="'+k+'"]');if(el){box.appendChild(el);el.classList.toggle('big',i===0)}})}
+function metEdit(on){const box=$('metrics');box.classList.toggle('edit',on);metSel=null;box.querySelectorAll('.sel').forEach(x=>x.classList.remove('sel'));
+ let b=$('editBar');if(b)b.remove();
+ if(on){b=document.createElement('div');b.id='editBar';b.className='editbar';
+  b.innerHTML='<span>✋ Touche une case, puis une autre pour les échanger</span><button class="sbtn" onclick="ls.set(\'metOrder\',MET_DEF);metApply()">↺ Par défaut</button><button class="sbtn pri" onclick="metEdit(false)">✓ Terminé</button>';
+  document.body.appendChild(b);try{navigator.vibrate&&navigator.vibrate(30)}catch(e){}}}
+(function(){const box=$('metrics');if(!box)return;metApply();let sx=0,sy=0;
+ box.addEventListener('pointerdown',e=>{const t=e.target.closest('.m');if(!t||box.classList.contains('edit'))return;sx=e.clientX;sy=e.clientY;clearTimeout(metLP);metLP=setTimeout(()=>metEdit(true),600)});
+ box.addEventListener('pointermove',e=>{if(Math.abs(e.clientX-sx)+Math.abs(e.clientY-sy)>12)clearTimeout(metLP)});
+ ['pointerup','pointercancel','pointerleave'].forEach(n=>box.addEventListener(n,()=>clearTimeout(metLP)));
+ box.addEventListener('contextmenu',e=>e.preventDefault());
+ box.addEventListener('click',e=>{if(!box.classList.contains('edit'))return;const t=e.target.closest('.m');if(!t)return;
+  if(!metSel){metSel=t;t.classList.add('sel');return}
+  if(metSel!==t){const o=metOrder(),a=o.indexOf(metSel.dataset.k),b=o.indexOf(t.dataset.k);[o[a],o[b]]=[o[b],o[a]];ls.set('metOrder',o);metApply()}
+  metSel.classList.remove('sel');metSel=null})})();
 /* ---------- agrandir / réduire une vue ---------- */
 let hudT=null;
 function toggleMaxi(id){const el=$(id),on=!el.classList.contains('maxi');
@@ -1504,22 +1551,36 @@ function toggleMaxi(id){const el=$(id),on=!el.classList.contains('maxi');
 // Une clé saisie dans Réglages › Vue de la rue la remplace.
 const MLY_DEFAULT='MLY|29567713716159285|ca8b4b5de6b20936797e6f5f3d2f8649';
 function bearing(a,b){const t=Math.PI/180,y=Math.sin((b[1]-a[1])*t)*Math.cos(b[0]*t),x=Math.cos(a[0]*t)*Math.sin(b[0]*t)-Math.sin(a[0]*t)*Math.cos(b[0]*t)*Math.cos((b[1]-a[1])*t);return(Math.atan2(y,x)/t+360)%360}
-const Street={last:null,busy:false,cur:null,
+const Street={last:null,busy:false,cur:null,zone:null,zoneBusy:false,
  on(){return rview==='rue'||$('rStreetBox').classList.contains('maxi')},
  msg(t){$('stMsg').textContent=t},
- kick(){if(!route||!hasLL(route))return;const d=Math.min(sess?sess.dist:0,route.dist),p=posAt(route,d),q=posAt(route,Math.min(d+30,route.dist));this.update(p[0],p[1],bearing(p,q))},
- async update(lat,lng,hd){
+ kick(){if(!route||!hasLL(route))return;const d=Math.min(sess?sess.dist:0,route.dist),p=posAt(route,d),q=posAt(route,Math.min(d+30,route.dist)),a=posAt(route,Math.min(d+150,route.dist));this.update(p[0],p[1],bearing(p,q),a)},
+ async loadZone(tok,c,p,first){this.zoneBusy=true;
+  try{let list=[];
+   for(const dd of [0.0025,0.006]){
+    const r=await fetch('https://graph.mapillary.com/images?access_token='+encodeURIComponent(tok)+'&fields=id,thumb_1024_url,computed_compass_angle,computed_geometry&limit=250&bbox='+[c[1]-dd,c[0]-dd,c[1]+dd,c[0]+dd].map(v=>v.toFixed(6)).join(','));
+    const j=await r.json();if(j.error)throw new Error(j.error.message||'clé refusée');
+    list=(j.data||[]).map(im=>{const g=(im.computed_geometry||{}).coordinates;return g&&im.thumb_1024_url?{id:im.id,url:im.thumb_1024_url,ll:[g[1],g[0]],a:im.computed_compass_angle}:null}).filter(Boolean);
+    if(list.length)break}
+   // on garde les photos de l'ancienne zone encore proches, pour ne jamais se retrouver sans image
+   const old=this.zone?this.zone.list.filter(im=>hav(im.ll,c)<500):[],seen=new Set(list.map(x=>x.id));
+   this.zone={c,p,list:list.concat(old.filter(x=>!seen.has(x.id)))};this.last=null;log('Vue de la rue : '+list.length+' photo(s) chargées')}
+  catch(e){this.zoneErr=Date.now();this.msg('Mapillary : '+errTxt(e));log('Vue de la rue : '+errTxt(e));if(first)this.zone={c,p,list:[]}}
+  finally{this.zoneBusy=false;setTimeout(()=>this.kick(),50)}},
+ async update(lat,lng,hd,ahead){
   if(!this.on())return;const tok=ls.get('mlyToken','')||MLY_DEFAULT;
   if(!tok){this.msg('📷 Ajoute ta clé Mapillary dans Réglages › Vue de la rue');return}
-  if(this.busy||(this.last&&hav(this.last,[lat,lng])<35))return;this.busy=true;
-  try{let best=null;
-   for(const dd of [0.0007,0.002,0.005]){
-    const r=await fetch('https://graph.mapillary.com/images?access_token='+encodeURIComponent(tok)+'&fields=id,thumb_1024_url,computed_compass_angle,compass_angle,computed_geometry,geometry&limit=30&bbox='+[lng-dd,lat-dd,lng+dd,lat+dd].map(v=>v.toFixed(6)).join(','));
-    const j=await r.json();if(j.error)throw new Error(j.error.message||'clé refusée');
-    for(const im of j.data||[]){const g=(im.computed_geometry||im.geometry||{}).coordinates;if(!g||!im.thumb_1024_url)continue;
-     const a=im.computed_compass_angle!=null?im.computed_compass_angle:im.compass_angle,da=a==null?90:Math.abs(((a-hd)+540)%360-180);
-     const sc=hav([lat,lng],[g[1],g[0]])+da*0.6;if(!best||sc<best.sc)best={sc,url:im.thumb_1024_url,id:im.id}}
-    if(best)break}
+  // Nouvelle photo tous les 10 m. La liste des photos d'une zone (~250 m) est téléchargée une fois
+  // et réutilisée : on ne réinterroge Mapillary que lorsqu'on sort de la zone.
+  // Zone suivante préchargée EN AVANCE (centrée ~150 m devant sur le parcours), sans bloquer l'affichage.
+  const pos=[lat,lng],ctr=ahead||pos;
+  if(!this.zoneBusy&&Date.now()-(this.zoneErr||0)>20000&&(!this.zone||hav(this.zone.p,pos)>120))this.loadZone(tok,ctr,pos,!this.zone);
+  if(!this.zone){this.msg('⏳ Chargement des photos de la rue…');return}
+  if(this.busy||(this.last&&hav(this.last,pos)<10))return;this.busy=true;
+  try{
+   let best=null;
+   for(const im of this.zone.list){const da=im.a==null?90:Math.abs(((im.a-hd)+540)%360-180),sc=hav([lat,lng],im.ll)+da*0.6;if(!best||sc<best.sc)best=Object.assign({sc},im)}
+   if(best&&hav([lat,lng],best.ll)>400)best=null;
    this.last=[lat,lng];
    if(best&&best.id!==this.cur){this.cur=best.id;const A=$('stImg'),B=$('stImg2'),show=A.classList.contains('hid')?A:B,hide=show===A?B:A;
     show.onload=()=>{show.classList.remove('hid');hide.classList.add('hid')};show.src=best.url;this.msg('')}
